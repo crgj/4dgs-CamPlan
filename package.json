@@ -6,7 +6,8 @@
   "description": "CamPlan — Web 端相机机位规划、灯光布置与覆盖度评估工具",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && npm run clean:docs-build && vite build --outDir docs --emptyOutDir false && node scripts/write-docs-nojekyll.mjs",
+    "clean:docs-build": "node scripts/clean-docs-build.mjs",
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",
     "test": "vitest run",

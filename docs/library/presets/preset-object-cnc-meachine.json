@@ -1,0 +1,44 @@
+{
+  "id": "preset-object-cnc-meachine",
+  "kind": "subject",
+  "name": "CNC 机床",
+  "category": "设备",
+  "_builtinVersion": 1,
+  "createdAt": "2026-06-20T00:00:00.000Z",
+  "updatedAt": "2026-06-20T00:00:00.000Z",
+  "payload": {
+    "type": "subject",
+    "def": {
+      "name": "CNC 机床",
+      "geometry": {
+        "type": "mesh",
+        "src": "/library/models/Object/CNC_Meachine/CNC_Meachine.usdz",
+        "bbox": [
+          2,
+          1.5,
+          1.5
+        ],
+        "animate": false
+      },
+      "sampleDensity": 50,
+      "enabled": true,
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "id": "preset-object-jeep",
+  "kind": "subject",
+  "name": "Jeep 越野车",
+  "category": "车辆",
+  "_builtinVersion": 1,
+  "createdAt": "2026-06-20T00:00:00.000Z",
+  "updatedAt": "2026-06-20T00:00:00.000Z",
+  "payload": {
+    "type": "subject",
+    "def": {
+      "name": "Jeep 越野车",
+      "geometry": {
+        "type": "mesh",
+        "src": "/library/models/Object/jeep/jeep.usdz",
+        "bbox": [
+          4.5,
+          1.5,
+          1.9
+        ],
+        "animate": false
+      },
+      "sampleDensity": 50,
+      "enabled": true,
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    }
+  }
+}

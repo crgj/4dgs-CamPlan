@@ -1,0 +1,44 @@
+{
+  "id": "preset-human-lucie",
+  "kind": "subject",
+  "name": "Lucie 吸血鬼女郎",
+  "category": "人物",
+  "_builtinVersion": 1,
+  "createdAt": "2026-06-20T00:00:00.000Z",
+  "updatedAt": "2026-06-20T00:00:00.000Z",
+  "payload": {
+    "type": "subject",
+    "def": {
+      "name": "Lucie 吸血鬼女郎",
+      "geometry": {
+        "type": "mesh",
+        "src": "/library/models/Human/Lucie/Lucie_Barragan_Series_Chica_Vampiro.usdz",
+        "bbox": [
+          0.5,
+          1.7,
+          0.3
+        ],
+        "animate": true
+      },
+      "sampleDensity": 50,
+      "enabled": true,
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    }
+  }
+}
