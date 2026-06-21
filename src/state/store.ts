@@ -671,27 +671,33 @@ export const usePlanner = create<PlannerState>((set, get) => ({
     });
     return group;
   },
+  // #WDD-gpt 2026-06-21 - 删除一个实体时级联删除其全部子代（collectSubtreeIds 含 id 自身），
+  // 避免留下 parentId 指向已删实体的孤儿。这与大纲树形视图一致：删父即删整棵子树。
   removeEntity: (id) =>
     set((st) => {
+      const removeSet = new Set(collectSubtreeIds(st.scene, id));
+      if (removeSet.size === 0) return st;
       const before = st.scene;
       const scene: SceneDef = {
         ...before,
-        cameras: before.cameras.filter((e) => e.id !== id),
-        lights: before.lights.filter((e) => e.id !== id),
-        subjects: before.subjects.filter((e) => e.id !== id),
-        groups: (before.groups ?? []).filter((e) => e.id !== id),
+        cameras: before.cameras.filter((e) => !removeSet.has(e.id)),
+        lights: before.lights.filter((e) => !removeSet.has(e.id)),
+        subjects: before.subjects.filter((e) => !removeSet.has(e.id)),
+        groups: (before.groups ?? []).filter((e) => !removeSet.has(e.id)),
       };
       return {
         scene,
         history: record(before, st.history),
-        selection: st.selection.filter((s) => s !== id),
+        selection: st.selection.filter((s) => !removeSet.has(s)),
         dirty: true,
       };
     }),
-  // #WDD-gpt  2026-06-19 - 支持多选删除并合并为一个撤销步骤，匹配编辑器批量操作预期
+  // #WDD-gpt  2026-06-19 - 支持多选删除并合并为一个撤销步骤，匹配编辑器批量操作预期。
+  // #WDD-gpt 2026-06-21 - 同样级联删除每个选中实体的全部子代。
   removeEntities: (ids) =>
     set((st) => {
-      const removeSet = new Set(ids);
+      const removeSet = new Set<string>();
+      for (const id of ids) for (const sub of collectSubtreeIds(st.scene, id)) removeSet.add(sub);
       if (removeSet.size === 0) return st;
       const before = st.scene;
       const scene: SceneDef = {

@@ -1,4 +1,5 @@
 # Planner — 共享时间线日志（LOG.md）
+[2026-06-21T13:16:00Z] [glm-5.2/crgj] DONE 删除对象级联删除全部子物体 | 需求: 删除大纲一个对象时删除其所有子物体 | 改动: store.ts removeEntity(id) 改为先 collectSubtreeIds(scene,id) 拿到「id + 全部传递子代」集合，再一次性过滤掉 cameras/lights/subjects/groups 中命中集合的实体（单步历史）；removeEntities(ids) 同样对每个 id 展开子代后合并删除。复用既有 collectSubtreeIds（防成环、DFS） | 验证: CDP 实测——建 ParentGroup(2 cam)+ChildGroup(1 cam) 嵌套，removeEntity(ParentGroup) camDelta=3/grpDelta=2/camsLeft=5/orphanCheck=false（整棵子树清除，无孤儿）✓；删单个叶子相机 camDelta=1（不过删）✓；typecheck/lint/221 tests 全绿
 [2026-06-21T13:15:34Z] [gpt-5/crgj] DONE 改为 docs 静态发布 | 改动: npm run build 先清理 docs 内构建产物，再将 Vite 产物输出到 docs 并写入 .nojekyll；docs 目录生成 index/assets/library/favicon，可用于 GitHub Pages main/docs | 验收: npm run build 与 npm run lint 通过
 [2026-06-21T13:14:55Z] [gpt-5/crgj] START 改为 docs 静态发布 | 目标: 重新设置 npm build 输出 Vite 静态网站到 docs 目录，适配 GitHub Pages main/docs 发布
 [2026-06-21T13:06:59Z] [gpt-5/crgj] START 修复 GitHub Pages 404 | 目标: 设置 Vite base 为 /4dgs-CamPlan/ 并补 favicon，避免 Pages 子路径资源加载失败
