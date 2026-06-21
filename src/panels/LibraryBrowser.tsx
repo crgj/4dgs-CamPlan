@@ -25,6 +25,21 @@ import { setIconDragImage } from './panelIconUtils';
 // 三大类：人物（Human）/ 物体（Object）/ 组合（Composite，摄像机组等）
 type Tab = '人物' | '物体' | '组合';
 
+function tabLabel(tab: Tab, zh: boolean) {
+  if (tab === '人物') return zh ? '人物' : 'Human';
+  if (tab === '物体') return zh ? '物体' : 'Object';
+  return zh ? '组合' : 'Composite';
+}
+
+function categoryLabel(category: string, kind: LibraryAsset['kind'], zh: boolean) {
+  if (!zh) return category;
+  if (kind === 'composite') return '组合';
+  if (category.includes('人物') || category.toLowerCase().includes('human')) return '人物';
+  if (category.toLowerCase().includes('object')) return '物体';
+  if (category.toLowerCase() === 'general') return '通用';
+  return category.replace(/\s*\((human|object|composite)\)\s*/gi, '').replace(/\b(Human|Object|Composite)\b/g, '').trim() || category;
+}
+
 export function LibraryBrowser() {
   const { locale } = useTranslation();
   const scene = usePlanner((s) => s.scene);
@@ -165,7 +180,7 @@ export function LibraryBrowser() {
                 : 'text-[var(--color-text-dim)] hover:text-[var(--color-text)]'
             }`}
           >
-            {t === '人物' ? (zh ? '人物 Human' : 'Human') : t === '物体' ? (zh ? '物体 Object' : 'Object') : zh ? '组合 Composite' : 'Composite'}
+            {tabLabel(t, zh)}
           </button>
         ))}
       </div>
@@ -216,7 +231,7 @@ export function LibraryBrowser() {
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[12px] font-medium">{a.name}</span>
                 <span className="block truncate text-[10px] text-[var(--color-text-faint)]">
-                  {a.category} · {new Date(a.updatedAt).toLocaleDateString()}
+                  {categoryLabel(a.category, a.kind, zh)} · {new Date(a.updatedAt).toLocaleDateString()}
                 </span>
               </span>
               <button

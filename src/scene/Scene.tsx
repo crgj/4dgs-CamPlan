@@ -94,6 +94,12 @@ function Entities() {
     ...(scene.groups ?? []),
   ];
 
+  // #WDD-gpt 2026-06-21 - 多选：把全部选中实体传给 gizmo，gizmo 位于质心，一起移动/旋转。
+  const selectedEntities = selection
+    .map((id) => allEntities.find((e) => e.id === id) ?? null)
+    .filter((e): e is AnyEntity => e !== null);
+  const isMulti = selectedEntities.length > 1;
+
   // 递归渲染实体节点树
   // #WDD-gpt  2026-06-19 - 用实体联合类型和 R3F 事件类型替代 any，降低选择链路风险
   const renderEntityNode = (entity: AnyEntity) => {
@@ -170,8 +176,8 @@ function Entities() {
 
       {visibleRoots.map((e) => renderEntityNode(e))}
 
-      {/* 选中实体的 gizmo */}
-      {selectedEntity && <Gizmo target={selectedEntity} />}
+      {/* 选中实体的 gizmo（单选：挂在目标实体；多选：挂在质心，一起移动/旋转） */}
+      {selectedEntity && <Gizmo target={selectedEntity} selection={isMulti ? selectedEntities : undefined} />}
     </>
   );
 }

@@ -7,20 +7,11 @@ import { useState } from 'react';
 import { usePlanner } from '@/state/store';
 import { useTranslation } from '@/lib/i18n';
 
-const viewLabelKeys = {
-  perspective: 'Perspective',
-  top: 'Top',
-  front: 'Front',
-  side: 'Side',
-} as const;
-
 const viewModes = ['lit', 'wireframe', 'bounds'] as const;
 
 export function ViewportToolbar() {
   const [collapsed, setCollapsed] = useState(false);
   const { t, locale } = useTranslation();
-  const projection = usePlanner((s) => s.view.projection);
-  const setProjection = usePlanner((s) => s.setProjection);
   const showCoverageHeatmap = usePlanner((s) => s.view.showCoverageHeatmap);
   const toggleCoverageHeatmap = usePlanner((s) => s.toggleCoverageHeatmap);
   const showFrustums = usePlanner((s) => s.view.showFrustums);
@@ -45,6 +36,9 @@ export function ViewportToolbar() {
   const toggleSnap = usePlanner((s) => s.toggleSnap);
   const snapStep = usePlanner((s) => s.view.snapStep);
   const setSnapStep = usePlanner((s) => s.setSnapStep);
+  // #WDD-gpt 2026-06-21 - 旋转捕捉独立步长（度）
+  const rotationSnapStep = usePlanner((s) => s.view.rotationSnapStep);
+  const setRotationSnapStep = usePlanner((s) => s.setRotationSnapStep);
 
   // 组合隔离编辑面包屑
   const editingGroupId = usePlanner((s) => s.editingGroupId);
@@ -123,18 +117,7 @@ export function ViewportToolbar() {
       >
         -
       </button>
-      <select
-        value={projection}
-        onChange={(e) => setProjection(e.target.value as typeof projection)}
-        className="h-5 rounded-[var(--radius-sm)] border border-[var(--color-panel-border)] bg-[var(--color-recessed)] px-1 text-[10px] text-[var(--color-text)] outline-none"
-        title="Viewport projection (1/2/3/4)"
-      >
-        {Object.keys(viewLabelKeys).map((value) => (
-          <option key={value} value={value}>
-            {t(value === 'perspective' ? 'perspective' : value === 'top' ? 'topView' : value === 'front' ? 'frontView' : 'sideView')}
-          </option>
-        ))}
-      </select>
+      {/* #WDD-gpt 2026-06-21 - 移除透视切换组件（用户需求）；投影仍可由快捷键 1/2/3/4 切换 */}
 
       <div className="mx-0.5 h-3 w-px bg-[var(--color-panel-border)]" />
 
@@ -175,7 +158,7 @@ export function ViewportToolbar() {
 
       <div className="mx-0.5 h-3 w-px bg-[var(--color-panel-border)]" />
 
-      {/* T-027 吸附 + 步长 */}
+      {/* T-027 吸附 + 步长（位置 m / 旋转 ° 分别设置） */}
       {toggleBtn(snapToGrid, toggleSnap, t('snap'), 'Toggle grid snapping (G)')}
       <input
         type="number"
@@ -183,11 +166,26 @@ export function ViewportToolbar() {
         onChange={(e) => setSnapStep(Math.max(0.01, Number(e.target.value)))}
         step={0.05}
         min={0.01}
-        className={`h-5 w-12 rounded-[var(--radius-sm)] border bg-[var(--color-recessed)] px-1 text-[10px] text-[var(--color-text)] outline-none ${
+        className={`h-5 w-10 rounded-[var(--radius-sm)] border bg-[var(--color-recessed)] px-1 text-[10px] text-[var(--color-text)] outline-none ${
           snapToGrid ? 'border-[var(--color-accent)]' : 'border-[var(--color-panel-border)]'
         }`}
-        title="Snap step (m)"
+        title={locale === 'zh' ? '位置捕捉步长 (m)' : 'Translation snap step (m)'}
       />
+      <span className="px-0.5 text-[9px] text-[var(--color-text-faint)]">m</span>
+      {/* #WDD-gpt 2026-06-21 - 旋转捕捉步长（度），与位置步长区分 */}
+      <input
+        type="number"
+        value={rotationSnapStep}
+        onChange={(e) => setRotationSnapStep(Math.max(1, Number(e.target.value)))}
+        step={5}
+        min={1}
+        max={180}
+        className={`h-5 w-10 rounded-[var(--radius-sm)] border bg-[var(--color-recessed)] px-1 text-[10px] text-[var(--color-text)] outline-none ${
+          snapToGrid ? 'border-[var(--color-accent)]' : 'border-[var(--color-panel-border)]'
+        }`}
+        title={locale === 'zh' ? '旋转捕捉步长 (度)' : 'Rotation snap step (degrees)'}
+      />
+      <span className="px-0.5 text-[9px] text-[var(--color-text-faint)]">°</span>
 
       <div className="mx-0.5 h-3 w-px bg-[var(--color-panel-border)]" />
 

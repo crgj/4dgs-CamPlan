@@ -17,9 +17,14 @@ export function Environment({ env }: { env: EnvDef }) {
   const groundColor = `#${env.ground.color.toString(16).padStart(6, '0')}`;
   const hdriKey = env.hdri;
   const hdriUrl = hdriKey ? HDRI_PRESETS[hdriKey] ?? hdriKey : undefined;
+  const fogColor = env.fog ? `#${env.fog.color.toString(16).padStart(6, '0')}` : undefined;
+  const fogNear = env.fog ? Math.max(0, Math.min(env.fog.near, env.fog.far - 0.01)) : 0;
+  const fogFar = env.fog ? Math.max(fogNear + 0.01, env.fog.far) : 1;
 
   return (
     <>
+      {/* #WDD-gpt  2026-06-21 - Inspector 只写 env.fog；这里把它挂到 Three scene.fog，主视口材质才会实际参与雾化 */}
+      {env.fog && <fog attach="fog" args={[fogColor ?? '#222222', fogNear, fogFar]} />}
       {/* T-087：HDRI 作为 IBL（环境光 + 反射），无 HDRI 时用基础环境光 + 补光方向光，
           否则空场景里只有 ambientLight(0.4)，PBR 模型（如 OBJ 人物）会几乎全黑看不见。 */}
       {hdriUrl ? (

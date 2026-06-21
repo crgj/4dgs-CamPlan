@@ -88,6 +88,20 @@ describe('store / 选择', () => {
     usePlanner.getState().clearSelection();
     expect(usePlanner.getState().selection).toHaveLength(0);
   });
+  it('selected camera viewport commands', () => {
+    const cam = usePlanner.getState().addCamera();
+    usePlanner.getState().viewSelectedCameraViewport();
+    expect(usePlanner.getState().view.viewportCommand).toMatchObject({
+      kind: 'viewCamera',
+      cameraId: cam.id,
+    });
+
+    usePlanner.getState().setSelectedCameraFromViewport();
+    expect(usePlanner.getState().view.viewportCommand).toMatchObject({
+      kind: 'setCameraFromViewport',
+      cameraId: cam.id,
+    });
+  });
 });
 
 describe('store / 更新', () => {

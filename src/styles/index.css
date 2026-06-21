@@ -159,3 +159,9 @@ input[type='number'] {
     max-width: calc(100% - 7rem);
   }
 }
+
+/* #WDD-gpt 2026-06-21 - 大纲行 hover 高亮（绿色，UE5 风）。用独立 class 而非 Tailwind
+   arbitrary value，保证 color-mix 规则稳定生成。 */
+.outline-row-hover:hover {
+  background: color-mix(in srgb, var(--color-ok) 25%, transparent);
+}

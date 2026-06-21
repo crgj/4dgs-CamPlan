@@ -40,10 +40,21 @@ export function useKeyboard() {
         s.redo();
         return;
       }
-      // 复制
+      // 复制（Ctrl+D：原地复制单个；Ctrl+C/Ctrl+V：复制到剪贴板后粘贴，支持多选）
       if (ctrl && e.key.toLowerCase() === 'd') {
         e.preventDefault();
         if (s.selection.length > 0) s.duplicateEntity(s.selection[s.selection.length - 1]);
+        return;
+      }
+      // #WDD-gpt 2026-06-21 - Ctrl+C 复制选中到剪贴板；Ctrl+V 粘贴（生成新 id，偏移 +1m）
+      if (ctrl && e.key.toLowerCase() === 'c') {
+        e.preventDefault();
+        s.copySelection();
+        return;
+      }
+      if (ctrl && e.key.toLowerCase() === 'v') {
+        e.preventDefault();
+        s.pasteSelection();
         return;
       }
 
@@ -61,8 +72,18 @@ export function useKeyboard() {
           s.toggleSnap();
           break;
         case 'f':
-          // #WDD-gpt  2026-06-19 - 实现 UE 风 F 聚焦选中实体快捷键
-          s.focusSelectedViewport();
+          // #WDD-gpt  2026-06-21 - 选中摄像机时 F 捕捉主视口到该摄像机，否则保持原 UE 风聚焦选中实体
+          if (s.selection.length > 0 && s.scene.cameras.some((cam) => cam.id === s.selection[s.selection.length - 1])) {
+            s.viewSelectedCameraViewport();
+          } else {
+            s.focusSelectedViewport();
+          }
+          break;
+        case 'c':
+          // #WDD-gpt  2026-06-21 - 选中摄像机时 C 将该摄像机设置到当前主视口位姿
+          if (s.selection.length > 0 && s.scene.cameras.some((cam) => cam.id === s.selection[s.selection.length - 1])) {
+            s.setSelectedCameraFromViewport();
+          }
           break;
         case 'home':
           // #WDD-gpt  2026-06-19 - 实现 Home 复位视口快捷键

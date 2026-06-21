@@ -6,6 +6,8 @@ import { NumberInput } from '@/ui/NumberInput';
 import { useTranslation } from '@/lib/i18n';
 import type { AnyEntity, CameraDef, LightDef, SubjectDef, GroupDef, EnvDef, Transform } from '@/types';
 import { CameraPreview } from '@/scene/CameraPreview';
+import { getWorldTransform, lookAtRotation } from '@/lib/math';
+import { cameraParameterPresetPatch, cameraParameterPresets } from '@/lib/cameraParameterPresets';
 
 // ==================== UE5 风高细节 SVG 图标集 ====================
 const IconTransform = (
@@ -101,6 +103,34 @@ function PropertyRow({ label, children }: { label: string; children: React.React
   );
 }
 
+function CameraPresetSelect({
+  locale,
+  onApply,
+}: {
+  locale: 'zh' | 'en';
+  onApply: (presetId: string) => void;
+}) {
+  return (
+    <select
+      className="h-6 flex-1 rounded-sm border border-[var(--color-panel-border)] bg-[var(--color-recessed)] px-1.5 text-[11px] text-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none"
+      value=""
+      onChange={(e) => {
+        const id = e.target.value;
+        if (!id) return;
+        onApply(id);
+        e.currentTarget.value = '';
+      }}
+    >
+      <option value="">{locale === 'zh' ? '选择相机预设…' : 'Select camera preset...'}</option>
+      {cameraParameterPresets.map((preset) => (
+        <option key={preset.id} value={preset.id}>
+          {locale === 'zh' ? preset.labelZh : preset.labelEn}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 export function Inspector() {
   const { t, locale } = useTranslation();
   const {
@@ -114,6 +144,8 @@ export function Inspector() {
     renameEntity,
     reparentMany,
     commitHistory,
+    viewSelectedCameraViewport,
+    setSelectedCameraFromViewport,
     scene,
     selection,
   } = usePlanner();
@@ -140,6 +172,20 @@ export function Inspector() {
   // #WDD-gpt 2026-06-21 - 批量按类型写入：把 patch 应用到所有同类型选中实体。
   const updateCamerasAll = (patch: Partial<CameraDef>, withHistory?: boolean) => {
     for (const e of selectedEntities) if (e.kind === 'camera') updateCamera(e.id, patch, withHistory);
+  };
+  const applyCameraPresetToSelection = (presetId: string) => {
+    const preset = cameraParameterPresets.find((candidate) => candidate.id === presetId);
+    if (!preset) return;
+    commitHistory();
+    const patch = cameraParameterPresetPatch(preset);
+    for (const entity of selectedEntities) {
+      if (entity.kind === 'camera') updateCamera(entity.id, patch, false);
+    }
+  };
+  const applyCameraPreset = (cam: CameraDef, presetId: string) => {
+    const preset = cameraParameterPresets.find((candidate) => candidate.id === presetId);
+    if (!preset) return;
+    updateCamera(cam.id, cameraParameterPresetPatch(preset));
   };
   const updateLightsAll = (patch: Partial<LightDef>, withHistory?: boolean) => {
     for (const e of selectedEntities) if (e.kind === 'light') updateLight(e.id, patch, withHistory);
@@ -190,7 +236,7 @@ export function Inspector() {
         <div className="border-b border-[var(--color-panel-border)] px-3 py-2">
           <div className="flex flex-col gap-1">
             <span className="text-[10px] uppercase tracking-wide text-[var(--color-text-faint)]">
-              {locale === 'zh' ? '名称 (Name)' : 'Name'}
+              {locale === 'zh' ? '名称' : 'Name'}
             </span>
             <input
               type="text"
@@ -198,17 +244,37 @@ export function Inspector() {
               placeholder={mixedOf((e) => e.name) ? '—' : undefined}
               onChange={(e) => {
                 const name = e.target.value;
-                updateCamerasAll({ name }, false);
-                updateLightsAll({ name }, false);
-                updateSubjectsAll({ name }, false);
-                // 组合也改名（逐个）
-                for (const g of selectedEntities) {
-                  if (g.kind === 'group') updateGroup(g.id, { name }, false);
+                // #WDD-gpt 2026-06-21 - 名称模式：含 # 时按选中顺序展开为编号序列。
+                //   cam_## → cam_01, cam_02, cam_03...（# 数量 = 补零位数，从 1 开始）。
+                //   无 # 时所有选中实体设为同一名称（原行为）。
+                if (name.includes('#')) {
+                  const hashMatch = name.match(/#+/);
+                  const pad = hashMatch ? hashMatch[0].length : 2;
+                  selectedEntities.forEach((ent, i) => {
+                    const renamed = name.replace(/#+/g, String(i + 1).padStart(pad, '0'));
+                    if (ent.kind === 'camera') updateCamera(ent.id, { name: renamed }, false);
+                    else if (ent.kind === 'light') updateLight(ent.id, { name: renamed }, false);
+                    else if (ent.kind === 'subject') updateSubject(ent.id, { name: renamed }, false);
+                    else if (ent.kind === 'group') updateGroup(ent.id, { name: renamed }, false);
+                  });
+                } else {
+                  updateCamerasAll({ name }, false);
+                  updateLightsAll({ name }, false);
+                  updateSubjectsAll({ name }, false);
+                  for (const g of selectedEntities) {
+                    if (g.kind === 'group') updateGroup(g.id, { name }, false);
+                  }
                 }
               }}
               onBlur={commitHistory}
               className="h-[var(--control-h)] w-full rounded-[var(--radius-sm)] border border-[var(--color-panel-border)] bg-[var(--color-recessed)] px-2 text-[var(--color-text)] outline-none focus:border-[var(--color-accent)]"
             />
+            {/* #WDD-gpt 2026-06-21 - 名称模式说明 */}
+            <span className="text-[10px] leading-relaxed text-[var(--color-text-faint)]">
+              {locale === 'zh'
+                ? '输入 # 作为编号占位：cam_## → cam_01, cam_02…（# 数量=补零位数）。'
+                : 'Use # as number placeholder: cam_## → cam_01, cam_02… (# count = zero-pad).'}
+            </span>
           </div>
         </div>
 
@@ -324,7 +390,7 @@ export function Inspector() {
 
         {/* #WDD-gpt 2026-06-21 - 父物体设置（多选）：把全部选中实体 reparent 到所选父级 */}
         <div className="border-b border-[var(--color-panel-border)] px-3 py-2">
-          <PropertyRow label={locale === 'zh' ? '父物体 (Parent)' : 'Parent'}>
+          <PropertyRow label={locale === 'zh' ? '父物体' : 'Parent'}>
             <select
               className="h-[var(--control-h)] flex-1 rounded-[var(--radius-sm)] border border-[var(--color-panel-border)] bg-[var(--color-recessed)] px-2 text-[var(--color-text)] outline-none focus:border-[var(--color-accent)]"
               value={selectedEntities.every((e) => e.parentId === selectedEntities[0].parentId) ? selectedEntities[0].parentId ?? '' : '__mixed__'}
@@ -337,7 +403,7 @@ export function Inspector() {
               <option value="__mixed__" disabled>
                 {locale === 'zh' ? '— 混合 —' : '— Mixed —'}
               </option>
-              <option value="">{locale === 'zh' ? '（无 / 根级）' : '(None / Root)'}</option>
+              <option value="">{locale === 'zh' ? '无（根级）' : '(None / Root)'}</option>
               {allEntities
                 .filter((cand) => !selectedEntities.some((sel) => sel.id === cand.id))
                 .map((cand) => (
@@ -366,8 +432,42 @@ export function Inspector() {
         isOpen={folds.camera}
         onToggle={() => toggleFold('camera')}
       />
-      {folds.camera && (
-        <div className="flex flex-col gap-1.5 py-2">
+          {folds.camera && (
+            <div className="flex flex-col gap-1.5 py-2">
+          <PropertyRow label={locale === 'zh' ? '预设' : 'Preset'}>
+            <CameraPresetSelect locale={locale} onApply={applyCameraPresetToSelection} />
+          </PropertyRow>
+          <PropertyRow label={locale === 'zh' ? '看向对象' : 'Look At'}>
+            <select
+              className="h-6 rounded-sm bg-[var(--color-recessed)] border border-[var(--color-panel-border)] text-[var(--color-text)] text-[11px] px-1.5"
+              defaultValue=""
+              onChange={(e) => {
+                const id = e.target.value;
+                if (!id) return;
+                const all = allEntities;
+                const target = all.find((a) => a.id === id);
+                if (!target) return;
+                for (const ent of selectedEntities) {
+                  if (ent.kind !== 'camera') continue;
+                  const camWorld = getWorldTransform(ent, all);
+                  const targetWorld = getWorldTransform(target, all);
+                  const rot = lookAtRotation(camWorld.position, targetWorld.position);
+                  updateCamera(ent.id, { transform: { ...ent.transform, rotation: rot } }, false);
+                }
+                commitHistory();
+                e.currentTarget.value = '';
+              }}
+            >
+              <option value="">{locale === 'zh' ? '选择对象…' : 'Select object…'}</option>
+              {allEntities
+                .filter((ent) => !selectedEntities.some((sel) => sel.id === ent.id))
+                .map((ent) => (
+                  <option key={ent.id} value={ent.id}>
+                    {ent.name} ({ent.kind})
+                  </option>
+                ))}
+            </select>
+          </PropertyRow>
           <PropertyRow label={t('fov')}>
             <NumberInput
               mixed={mixedOf((e) => (e as CameraDef).fov)}
@@ -403,7 +503,7 @@ export function Inspector() {
             />
           </PropertyRow>
           {/* 曝光（ISO/Shutter/Aperture） */}
-          <PropertyRow label={locale === 'zh' ? '感光度 (ISO)' : 'ISO'}>
+          <PropertyRow label={locale === 'zh' ? '感光度' : 'ISO'}>
             <NumberInput
               mixed={mixedOf((e) => (e as CameraDef).exposure.iso)}
               value={firstVal((e) => (e as CameraDef).exposure.iso)}
@@ -418,7 +518,7 @@ export function Inspector() {
               className="flex-1"
             />
           </PropertyRow>
-          <PropertyRow label={locale === 'zh' ? '光圈 (Aperture)' : 'Aperture'}>
+          <PropertyRow label={locale === 'zh' ? '光圈' : 'Aperture'}>
             <NumberInput
               mixed={mixedOf((e) => (e as CameraDef).exposure.aperture)}
               value={firstVal((e) => (e as CameraDef).exposure.aperture)}
@@ -459,7 +559,7 @@ export function Inspector() {
               className="flex-1"
             />
           </PropertyRow>
-          <PropertyRow label={locale === 'zh' ? '颜色 (Color)' : 'Color'}>
+          <PropertyRow label={locale === 'zh' ? '颜色' : 'Color'}>
             <input
               type="color"
               value={'#' + firstVal((e) => (e as LightDef).color).toString(16).padStart(6, '0')}
@@ -614,7 +714,7 @@ export function Inspector() {
                   handleParentChange(ent.id, val === '' ? undefined : val);
                 }}
               >
-                <option value="">{locale === 'zh' ? '无 (根节点)' : 'None (Root)'}</option>
+                <option value="">{locale === 'zh' ? '无（根节点）' : 'None (Root)'}</option>
                 {getCandidateParents(ent).map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}
@@ -737,8 +837,54 @@ export function Inspector() {
             onToggle={() => toggleFold('preview')}
           />
           {folds.preview && (
-            <div className="px-2 py-2">
+            <div className="space-y-2 px-2 py-2">
+              <div className="grid grid-cols-2 gap-1.5">
+                <button
+                  type="button"
+                  onClick={viewSelectedCameraViewport}
+                  className="h-6 rounded-[var(--radius-sm)] border border-[var(--color-panel-border)] bg-[var(--color-recessed)] px-1.5 text-[10px] text-[var(--color-text)] hover:bg-[var(--color-panel-raised)]"
+                  title={locale === 'zh' ? '快捷键 F' : 'Shortcut F'}
+                >
+                  {locale === 'zh' ? '捕捉视点到摄像机' : 'View From Camera'}
+                </button>
+                <button
+                  type="button"
+                  onClick={setSelectedCameraFromViewport}
+                  className="h-6 rounded-[var(--radius-sm)] border border-[var(--color-panel-border)] bg-[var(--color-recessed)] px-1.5 text-[10px] text-[var(--color-text)] hover:bg-[var(--color-panel-raised)]"
+                  title={locale === 'zh' ? '快捷键 C' : 'Shortcut C'}
+                >
+                  {locale === 'zh' ? '摄像机设置到视点' : 'Set Camera To View'}
+                </button>
+              </div>
               <CameraPreview cam={cam} />
+              <div>
+                <PropertyRow label={locale === 'zh' ? '看向对象' : 'Look At'}>
+                  <select
+                    className="h-6 rounded-sm bg-[var(--color-recessed)] border border-[var(--color-panel-border)] text-[var(--color-text)] text-[11px] px-1.5 flex-1"
+                    value={''}
+                    onChange={(e) => {
+                      const id = e.target.value;
+                      if (!id) return;
+                      const all = allEntities;
+                      const target = all.find((a) => a.id === id);
+                      if (!target) return;
+                      const camWorld = getWorldTransform(cam, all);
+                      const targetWorld = getWorldTransform(target, all);
+                      const rot = lookAtRotation(camWorld.position, targetWorld.position);
+                      updateCamera(cam.id, { transform: { ...cam.transform, rotation: rot } });
+                    }}
+                  >
+                    <option value="">{locale === 'zh' ? '选择对象…' : 'Select object…'}</option>
+                    {allEntities
+                      .filter((ent) => ent.id !== cam.id)
+                      .map((ent) => (
+                        <option key={ent.id} value={ent.id}>
+                          {ent.name} ({ent.kind})
+                        </option>
+                      ))}
+                  </select>
+                </PropertyRow>
+              </div>
             </div>
           )}
         </div>
@@ -753,6 +899,9 @@ export function Inspector() {
           />
           {folds.camera && (
             <div className="flex flex-col gap-1 px-0 py-2">
+              <PropertyRow label={locale === 'zh' ? '预设' : 'Preset'}>
+                <CameraPresetSelect locale={locale} onApply={(presetId) => applyCameraPreset(cam, presetId)} />
+              </PropertyRow>
               <PropertyRow label={t('fov')}>
                 <NumberInput
                   value={cam.fov}
@@ -886,7 +1035,7 @@ export function Inspector() {
         {/* Metadata */}
         <div className="border-b border-[var(--color-panel-border)]">
           <CategoryHeader
-            title={locale === 'zh' ? '元数据 (Metadata)' : 'Metadata'}
+            title={locale === 'zh' ? '元数据' : 'Metadata'}
             icon={IconMetadata}
             isOpen={folds.metadata}
             onToggle={() => toggleFold('metadata')}
@@ -901,7 +1050,7 @@ export function Inspector() {
                   onChange={(e) => updateCamera(cam.id, { enabled: e.target.checked })}
                 />
               </PropertyRow>
-              <PropertyRow label={locale === 'zh' ? '拍摄时刻 (Time)' : 'Capture Time'}>
+              <PropertyRow label={locale === 'zh' ? '拍摄时刻' : 'Capture Time'}>
                 <NumberInput
                   value={cam.time ?? 0}
                   onCommitHistory={commitHistory}
@@ -941,10 +1090,10 @@ export function Inspector() {
                   value={light.lightKind}
                   onChange={(e) => updateLight(light.id, { lightKind: e.target.value as LightDef['lightKind'] })}
                 >
-                  <option value="point">{locale === 'zh' ? '点光源 (Point)' : 'Point Light'}</option>
-                  <option value="spot">{locale === 'zh' ? '聚光灯 (Spot)' : 'Spot Light'}</option>
-                  <option value="directional">{locale === 'zh' ? '平行光 (Directional)' : 'Directional Light'}</option>
-                  <option value="area">{locale === 'zh' ? '面光源 (Area)' : 'Area Light'}</option>
+                  <option value="point">{locale === 'zh' ? '点光源' : 'Point Light'}</option>
+                  <option value="spot">{locale === 'zh' ? '聚光灯' : 'Spot Light'}</option>
+                  <option value="directional">{locale === 'zh' ? '平行光' : 'Directional Light'}</option>
+                  <option value="area">{locale === 'zh' ? '面光源' : 'Area Light'}</option>
                 </select>
               </PropertyRow>
 
@@ -1009,7 +1158,7 @@ export function Inspector() {
         {/* Metadata */}
         <div className="border-b border-[var(--color-panel-border)]">
           <CategoryHeader
-            title={locale === 'zh' ? '元数据 (Metadata)' : 'Metadata'}
+            title={locale === 'zh' ? '元数据' : 'Metadata'}
             icon={IconMetadata}
             isOpen={folds.metadata}
             onToggle={() => toggleFold('metadata')}
@@ -1024,7 +1173,7 @@ export function Inspector() {
                   onChange={(e) => updateLight(light.id, { enabled: e.target.checked })}
                 />
               </PropertyRow>
-              <PropertyRow label={locale === 'zh' ? '光照时刻 (Time)' : 'Light Time'}>
+              <PropertyRow label={locale === 'zh' ? '光照时刻' : 'Light Time'}>
                 <NumberInput
                   value={light.time ?? 0}
                   onCommitHistory={commitHistory}
@@ -1075,10 +1224,10 @@ export function Inspector() {
                     }
                   }}
                 >
-                  <option value="box">{locale === 'zh' ? '立方体 (Box)' : 'Box Cube'}</option>
-                  <option value="sphere">{locale === 'zh' ? '球体 (Sphere)' : 'Sphere Ball'}</option>
-                  <option value="plane">{locale === 'zh' ? '平面 (Plane)' : 'Plane Sheet'}</option>
-                  <option value="mesh">{locale === 'zh' ? '3D网格 (Mesh)' : '3D Mesh'}</option>
+                  <option value="box">{locale === 'zh' ? '立方体' : 'Box Cube'}</option>
+                  <option value="sphere">{locale === 'zh' ? '球体' : 'Sphere Ball'}</option>
+                  <option value="plane">{locale === 'zh' ? '平面' : 'Plane Sheet'}</option>
+                  <option value="mesh">{locale === 'zh' ? '3D 网格' : '3D Mesh'}</option>
                 </select>
               </PropertyRow>
 
@@ -1205,7 +1354,7 @@ export function Inspector() {
                             updateSubject(subj.id, { geometry: { ...geom, animationClip: clip } });
                           }}
                         >
-                          <option value="">{locale === 'zh' ? '默认 (首个)' : 'Default (First)'}</option>
+                          <option value="">{locale === 'zh' ? '默认（首个）' : 'Default (First)'}</option>
                           {/* 动画 clip 列表从模型加载后获取，这里用已知名称占位 */}
                           <option value="idle">idle</option>
                         </select>
@@ -1235,7 +1384,7 @@ export function Inspector() {
         {/* Metadata */}
         <div className="border-b border-[var(--color-panel-border)]">
           <CategoryHeader
-            title={locale === 'zh' ? '元数据 (Metadata)' : 'Metadata'}
+            title={locale === 'zh' ? '元数据' : 'Metadata'}
             icon={IconMetadata}
             isOpen={folds.metadata}
             onToggle={() => toggleFold('metadata')}
@@ -1250,7 +1399,7 @@ export function Inspector() {
                   onChange={(e) => updateSubject(subj.id, { enabled: e.target.checked })}
                 />
               </PropertyRow>
-              <PropertyRow label={locale === 'zh' ? '采样时刻 (Time)' : 'Subject Time'}>
+              <PropertyRow label={locale === 'zh' ? '采样时刻' : 'Subject Time'}>
                 <NumberInput
                   value={subj.time ?? 0}
                   onCommitHistory={commitHistory}
@@ -1369,14 +1518,14 @@ export function Inspector() {
         {/* Fog Settings */}
         <div className="border-b border-[var(--color-panel-border)]">
           <CategoryHeader
-            title={locale === 'zh' ? '大气雾效 (Atmosphere Fog)' : 'Atmosphere Fog'}
+            title={locale === 'zh' ? '大气雾效' : 'Atmosphere Fog'}
             icon={IconEnvironment}
             isOpen={folds.envFog}
             onToggle={() => toggleFold('envFog')}
           />
           {folds.envFog && (
             <div className="flex flex-col gap-1 px-0 py-2">
-              <PropertyRow label={locale === 'zh' ? '启用雾效 (Enable)' : 'Enable Fog'}>
+              <PropertyRow label={locale === 'zh' ? '启用雾效' : 'Enable Fog'}>
                 <input
                   type="checkbox"
                   className="rounded-sm bg-[var(--color-recessed)] border border-[var(--color-panel-border)] text-[var(--color-accent)] focus:ring-0 focus:outline-none cursor-pointer"
@@ -1394,12 +1543,12 @@ export function Inspector() {
               </PropertyRow>
               {env.fog && (
                 <>
-                  <PropertyRow label={locale === 'zh' ? '雾气颜色 (Color)' : 'Fog Color'}>
+                  <PropertyRow label={locale === 'zh' ? '雾气颜色' : 'Fog Color'}>
                     {renderColorPicker(env.fog.color, (v, hist) =>
                       updateEnv({ fog: { ...env.fog!, color: v } }, hist)
                     )}
                   </PropertyRow>
-                  <PropertyRow label={locale === 'zh' ? '起始距离 (Near)' : 'Start Distance'}>
+                  <PropertyRow label={locale === 'zh' ? '起始距离' : 'Start Distance'}>
                     <NumberInput
                       value={env.fog.near}
                       onCommitHistory={commitHistory}
@@ -1409,7 +1558,7 @@ export function Inspector() {
                       className="flex-1"
                     />
                   </PropertyRow>
-                  <PropertyRow label={locale === 'zh' ? '消散距离 (Far)' : 'End Distance'}>
+                  <PropertyRow label={locale === 'zh' ? '消散距离' : 'End Distance'}>
                     <NumberInput
                       value={env.fog.far}
                       onCommitHistory={commitHistory}

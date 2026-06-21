@@ -1,0 +1,57 @@
+[
+  {
+    "id": "phone-wide-4k",
+    "labelZh": "手机广角 4K",
+    "labelEn": "Phone Wide 4K",
+    "fov": 72,
+    "aspect": 1.7777777778,
+    "near": 0.05,
+    "far": 200,
+    "resolution": { "width": 3840, "height": 2160 },
+    "exposure": { "iso": 200, "shutter": 0.0166667, "aperture": 1.8 }
+  },
+  {
+    "id": "action-cam-4k",
+    "labelZh": "运动相机 4K",
+    "labelEn": "Action Cam 4K",
+    "fov": 110,
+    "aspect": 1.7777777778,
+    "near": 0.05,
+    "far": 150,
+    "resolution": { "width": 3840, "height": 2160 },
+    "exposure": { "iso": 400, "shutter": 0.0083333, "aperture": 2.8 }
+  },
+  {
+    "id": "dslr-standard-4k",
+    "labelZh": "标准镜头 4K",
+    "labelEn": "Standard Lens 4K",
+    "fov": 40,
+    "aspect": 1.7777777778,
+    "near": 0.1,
+    "far": 1000,
+    "resolution": { "width": 3840, "height": 2160 },
+    "exposure": { "iso": 100, "shutter": 0.008, "aperture": 5.6 }
+  },
+  {
+    "id": "portrait-vertical",
+    "labelZh": "竖屏人像",
+    "labelEn": "Portrait Vertical",
+    "fov": 35,
+    "aspect": 0.5625,
+    "near": 0.1,
+    "far": 300,
+    "resolution": { "width": 1080, "height": 1920 },
+    "exposure": { "iso": 200, "shutter": 0.004, "aperture": 2.8 }
+  },
+  {
+    "id": "survey-1080p",
+    "labelZh": "阵列采集 1080p",
+    "labelEn": "Array Capture 1080p",
+    "fov": 55,
+    "aspect": 1.7777777778,
+    "near": 0.1,
+    "far": 500,
+    "resolution": { "width": 1920, "height": 1080 },
+    "exposure": { "iso": 200, "shutter": 0.01, "aperture": 4 }
+  }
+]

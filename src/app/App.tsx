@@ -7,6 +7,7 @@ import { MessageLog } from '@/panels/MessageLog';
 import { Preferences } from '@/panels/Preferences';
 import { WorldSettings } from '@/panels/WorldSettings';
 import { usePlanner } from '@/state/store';
+import { Shortcuts } from '@/panels/Shortcuts';
 import { useTranslation } from '@/lib/i18n';
 import { DockLayout } from './DockLayout';
 import { isDockPanelVisible, subscribeDockLayout, toggleDockPanel } from './dockLayoutController';
@@ -28,15 +29,17 @@ function DockPanelToggle({
       type="button"
       onClick={onClick}
       title={title}
-      className={`flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] border text-[12px] ${
+      className={`group relative flex h-7 w-7 items-center justify-center rounded-[2px] border text-[12px] transition-colors ${
         active
-          ? 'border-[var(--color-accent)] bg-[var(--color-select-fill)] text-[var(--color-text)]'
-          : 'border-[var(--color-panel-border)] bg-[var(--color-recessed)] text-[var(--color-text-dim)] hover:text-[var(--color-text)]'
+          ? 'border-[var(--color-panel-border)] bg-[var(--color-panel-raised)] text-[var(--color-accent)]'
+          : 'border-transparent bg-transparent text-[var(--color-text-dim)] hover:border-[var(--color-panel-border)] hover:bg-[var(--color-panel-raised)] hover:text-[var(--color-text)]'
       }`}
     >
-      <span className="relative h-3.5 w-4 rounded-[1px] border border-current">
+      {/* #WDD-gpt  2026-06-21 - Dock 显隐按钮选中态改为细状态条，避免 topbar 大面积蓝底突兀 */}
+      <span className={`absolute bottom-[2px] left-1 right-1 h-[2px] rounded-full ${active ? 'bg-[var(--color-accent)]' : 'bg-transparent'}`} />
+      <span className="relative h-3.5 w-4 rounded-[1px] border border-current opacity-90">
         <span
-          className={`absolute top-0 h-full w-[5px] bg-current opacity-70 ${
+          className={`absolute top-0 h-full w-[5px] bg-current opacity-55 ${
             side === 'left' ? 'left-0' : 'right-0'
           }`}
         />
@@ -51,6 +54,7 @@ export function App() {
   const { locale } = useTranslation();
   const showLogs = usePlanner((s) => s.showLogs);
   const activeOverlay = usePlanner((s) => s.activeOverlay);
+  const setActiveOverlay = usePlanner((s) => s.setActiveOverlay);
   const dirty = usePlanner((s) => s.dirty);
   const currentFileName = usePlanner((s) => s.currentFileName);
   const leftVisible = useSyncExternalStore(
@@ -79,7 +83,8 @@ export function App() {
             <circle cx="5.55" cy="7.32" r="1.65" fill="#11161c" stroke="#22a8f2" strokeWidth="1.05" />
             <circle cx="5.55" cy="7.32" r="0.58" fill="#22a8f2" />
           </svg>
-          <span className="font-bold tracking-wider text-[var(--color-text)]">CamPlan</span>
+          <span className="font-bold tracking-wider text-[var(--color-text)]">CamPlan </span> 
+          <span className="text-[10px] font-normal text-[var(--color-text-faint)]">v1.3 </span>
         </div>
         <div className="h-4 w-px bg-[var(--color-panel-border)]" />
         
@@ -104,6 +109,14 @@ export function App() {
             onClick={() => toggleDockPanel('details')}
             title={locale === 'zh' ? '显示/隐藏右侧细节面板' : 'Show/hide right details panel'}
           />
+          <button
+            type="button"
+            onClick={() => setActiveOverlay(activeOverlay === 'shortcuts' ? null : 'shortcuts')}
+            title={locale === 'zh' ? '显示/隐藏快捷按键帮助' : 'Show/hide shortcuts help'}
+            className="flex h-7 w-7 items-center justify-center rounded-[var(--radius-sm)] border text-[12px] border-[var(--color-panel-border)] bg-[var(--color-recessed)] text-[var(--color-text-dim)] hover:text-[var(--color-text)]"
+          >
+            ?
+          </button>
         </div>
         
         <span className="ml-auto text-[10px] text-[var(--color-text-faint)] flex items-center gap-2">
@@ -134,6 +147,7 @@ export function App() {
       {/* 模态覆盖层（T-032/T-034） */}
       {activeOverlay === 'preferences' && <Preferences />}
       {activeOverlay === 'worldSettings' && <WorldSettings />}
+      {activeOverlay === 'shortcuts' && <Shortcuts />}
 
       {/* 6. 最底状态栏 */}
       <footer className="flex h-6 shrink-0 items-center gap-4 border-t border-[var(--color-panel-border)] bg-[var(--color-panel)] px-3 text-[11px] text-[var(--color-text-faint)] z-50">

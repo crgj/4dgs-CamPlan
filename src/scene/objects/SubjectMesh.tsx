@@ -23,6 +23,16 @@ import { publicUrl } from '@/lib/publicUrl';
 const ACCENT = '#0a8fef';
 const DIM = '#6a7a8a';
 
+function enableMaterialFog(material: THREE.Material | THREE.Material[] | null | undefined): void {
+  if (!material) return;
+  const materials = Array.isArray(material) ? material : [material];
+  materials.forEach((mat) => {
+    // #WDD-gpt  2026-06-21 - 主体模型材质显式参与 scene.fog，避免雾效只影响地面而不影响 USDZ/OBJ/基础几何
+    (mat as THREE.Material & { fog?: boolean }).fog = true;
+    mat.needsUpdate = true;
+  });
+}
+
 /** 解析 OBJ 路径对应的资源目录与贴图。 */
 function parseObjPaths(src: string) {
   const dir = src.slice(0, src.lastIndexOf('/') + 1);
@@ -85,6 +95,7 @@ function ObjSubjectModel({ src }: { src: string }) {
       roughness: 0.7,
       metalness: 0.0,
     });
+    enableMaterialFog(mat);
     clone.traverse((child) => {
       if (child instanceof THREE.Mesh) {
         child.castShadow = true;
@@ -206,12 +217,11 @@ function UsdSubjectModel({ src, animate, animationClip, bbox }: { src: string; a
         if (Array.isArray(child.material)) {
           child.material.forEach((mat) => {
             mat.side = THREE.DoubleSide;
-            mat.needsUpdate = true;
           });
         } else if (child.material) {
           child.material.side = THREE.DoubleSide;
-          child.material.needsUpdate = true;
         }
+        enableMaterialFog(child.material);
       }
     });
     // #WDD-gpt  2026-06-20 - USDComposer 的贴图 Image.onload 是异步的，解析后与下一帧都显式刷新视口
@@ -297,19 +307,21 @@ export function SubjectMesh({ subject, children, onClick }: { subject: SubjectDe
       {subject.geometry.type === 'box' && (
         <mesh name={subject.name} {...meshShadowProps}>
           <boxGeometry args={subject.geometry.size as [number, number, number]} />
-          <meshStandardMaterial {...materialProps} />
+          <meshStandardMaterial fog {...materialProps} />
         </mesh>
       )}
       {subject.geometry.type === 'sphere' && (
         <mesh name={subject.name} {...meshShadowProps}>
           <sphereGeometry args={[subject.geometry.radius, 24, 24]} />
-          <meshStandardMaterial {...materialProps} />
+          <meshStandardMaterial fog {...materialProps} />
         </mesh>
       )}
       {subject.geometry.type === 'plane' && (
+        // #WDD-gpt 2026-06-21 - plane 用 planeGeometry（width=长度, height=宽度），而非 boxGeometry（之前误用导致地面显示成立方体）。
+        // plane.size 为 [w, h, 1]，取前两位作 planeGeometry 的 width/height。
         <mesh name={subject.name} {...meshShadowProps}>
-          <boxGeometry args={subject.geometry.size as [number, number, number]} />
-          <meshStandardMaterial {...materialProps} />
+          <planeGeometry args={[subject.geometry.size[0], subject.geometry.size[1]]} />
+          <meshStandardMaterial fog side={THREE.DoubleSide} {...materialProps} />
         </mesh>
       )}
       {subject.geometry.type === 'mesh' && (
@@ -320,7 +332,7 @@ export function SubjectMesh({ subject, children, onClick }: { subject: SubjectDe
       {selected && (
         <mesh>
           <boxGeometry args={[1.04, 1.04, 1.04]} />
-          <meshBasicMaterial color={ACCENT} wireframe />
+          <meshBasicMaterial fog color={ACCENT} wireframe />
         </mesh>
       )}
 

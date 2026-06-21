@@ -127,6 +127,8 @@ export interface ViewState {
   snapToGrid: boolean;
   /** 网格捕捉步长（米）。 */
   snapStep: number;
+  /** 旋转捕捉步长（度）。 #WDD-gpt 2026-06-21 - 与位置步长区分。 */
+  rotationSnapStep: number;
   /** 摄像机飞行移动速度 (m/s)。 */
   cameraSpeed: number;
   /** 视口相机命令。由快捷键/菜单写入，由 UnrealControls 消费。 */
@@ -151,6 +153,22 @@ export type ViewportCommand =
   | {
       id: number;
       kind: 'reset';
+    }
+  | {
+      id: number;
+      kind: 'viewCamera';
+      cameraId: EntityId;
+    }
+  | {
+      id: number;
+      kind: 'setCameraFromViewport';
+      cameraId: EntityId;
+    }
+  | {
+      id: number;
+      kind: 'setView';
+      position: Vec3;
+      target: Vec3;
     };
 
 export interface PlannerState {
@@ -160,6 +178,8 @@ export interface PlannerState {
   // #WDD-gpt 2026-06-21 - Shift+click 范围选择的锚点：记录上次单击选中的实体 id，
   // 下次 Shift+click 时从锚点到当前 id 之间的实体全部选中（按场景扁平顺序）。
   lastSelectAnchor: EntityId | null;
+  // #WDD-gpt 2026-06-21 - 剪贴板：Ctrl+C 复制的选中实体（深拷贝，不持久化）。Ctrl+V 粘贴时生成新 id。
+  clipboard: AnyEntity[];
   history: HistoryState;
   view: ViewState;
 
@@ -184,6 +204,16 @@ export interface PlannerState {
   removeEntity: (id: EntityId) => void;
   removeEntities: (ids: readonly EntityId[]) => void;
   duplicateEntity: (id: EntityId) => EntityId | null;
+  /**
+   * 复制当前选中实体到剪贴板（深拷贝，保留原 id 供粘贴时维持父子关系）。
+   * Ctrl+C。#WDD-gpt 2026-06-21
+   */
+  copySelection: () => void;
+  /**
+   * 粘贴剪贴板内容：为每个实体生成新 id，位置整体偏移 +1m，维持剪贴板内的父子关系
+   * （旧 id→新 id 重映射）；返回新实体的 id 列表。Ctrl+V。
+   */
+  pasteSelection: () => EntityId[];
   /** T-028：改父级，默认保持世界变换（BUG-007），防成环。 */
   reparent: (id: EntityId, newParentId: EntityId | null, keepWorld?: boolean) => void;
   /**
@@ -232,6 +262,8 @@ export interface PlannerState {
   toggleGuides: () => void;
   toggleViewportHud: () => void;
   setSnapStep: (step: number) => void;
+  /** #WDD-gpt 2026-06-21 - 旋转捕捉步长（度）设置。 */
+  setRotationSnapStep: (step: number) => void;
   /** Preferences 侧用：避免与现有 setSnapStep 命名冲突的别名。 */
   setViewSnapStep: (step: number) => void;
   /** gizmo 坐标系：世界/局部（T-027）。 */
@@ -242,6 +274,8 @@ export interface PlannerState {
   setViewMode: (mode: 'lit' | 'wireframe' | 'bounds') => void;
   setCameraSpeed: (speed: number) => void;
   focusSelectedViewport: () => void;
+  viewSelectedCameraViewport: () => void;
+  setSelectedCameraFromViewport: () => void;
   resetViewportCamera: () => void;
   setIsTransforming: (isTransforming: boolean) => void;
   setIsCameraNavigating: (isCameraNavigating: boolean) => void;
@@ -280,8 +314,8 @@ export interface PlannerState {
 
   // —— 模态/覆盖层（T-032/T-034 Preferences/WorldSettings）——
   /** 当前打开的覆盖面板（null=无）。 */
-  activeOverlay: 'preferences' | 'worldSettings' | null;
-  setActiveOverlay: (overlay: 'preferences' | 'worldSettings' | null) => void;
+  activeOverlay: 'preferences' | 'worldSettings' | 'shortcuts' | null;
+  setActiveOverlay: (overlay: 'preferences' | 'worldSettings' | 'shortcuts' | null) => void;
 
   // —— 组合隔离编辑（GroupDef）——
   /** 正在隔离编辑的组合 id；null=主场景模式。不入历史栈。 */
@@ -456,6 +490,7 @@ const defaultView = (): ViewState => ({
   showFrustums: false,
   snapToGrid: false,
   snapStep: 0.25,
+  rotationSnapStep: 15,
   cameraSpeed: 3.0,
   viewportCommand: null,
   isTransforming: false,
@@ -513,6 +548,7 @@ export const usePlanner = create<PlannerState>((set, get) => ({
   scene: buildExampleScene(),
   selection: [],
   lastSelectAnchor: null,
+  clipboard: [],
   history: emptyHistory(),
   view: defaultView(),
   locale: 'zh',
@@ -791,6 +827,77 @@ export const usePlanner = create<PlannerState>((set, get) => ({
     });
     return copy.id;
   },
+  // #WDD-gpt 2026-06-21 - Ctrl+C：深拷贝当前选中实体到剪贴板（保留原 id 以维持父子关系）。
+  copySelection: () => {
+    const st = get();
+    const all = [
+      ...st.scene.cameras,
+      ...st.scene.lights,
+      ...st.scene.subjects,
+      ...(st.scene.groups ?? []),
+    ];
+    const entities = st.selection
+      .map((id) => all.find((e) => e.id === id) ?? null)
+      .filter((e): e is AnyEntity => e !== null);
+    if (entities.length === 0) return;
+    set({ clipboard: entities.map((e) => clone(e)) });
+  },
+  // #WDD-gpt 2026-06-21 - Ctrl+V：粘贴剪贴板——每个实体生成新 id，位置整体偏移 +1m，
+  // 维持剪贴板内的父子关系（旧 id→新 id 重映射）。返回新实体 id 列表并选中。
+  pasteSelection: () => {
+    const st = get();
+    const clip = st.clipboard;
+    if (clip.length === 0) return [];
+    const used = usedIds(st.scene);
+    // 旧 id → 新 id 映射（按类型生成前缀）
+    const idMap = new Map<EntityId, EntityId>();
+    for (const e of clip) {
+      const prefix =
+        e.kind === 'camera' ? 'cam' : e.kind === 'light' ? 'light' : e.kind === 'group' ? 'group' : 'subj';
+      idMap.set(e.id, uid(prefix, used));
+      used.add(idMap.get(e.id)!);
+    }
+    const OFFSET = 1; // 粘贴偏移 1m（XZ），避免与原件重叠
+    const remap = (e: AnyEntity): AnyEntity => {
+      const newId = idMap.get(e.id)!;
+      // parentId 若在剪贴板内则重映射，否则丢弃（不引用外部实体）
+      const newParent = e.parentId ? (idMap.get(e.parentId) ?? undefined) : undefined;
+      const pos = e.transform.position;
+      const transformed: AnyEntity = {
+        ...clone(e),
+        id: newId,
+        parentId: newParent,
+        name: `${e.name} copy`,
+        transform: {
+          ...e.transform,
+          position: [pos[0] + OFFSET, pos[1], pos[2] + OFFSET],
+        },
+      };
+      return transformed;
+    };
+    const copies = clip.map(remap);
+    const newCameras = copies.filter((c): c is CameraDef => c.kind === 'camera');
+    const newLights = copies.filter((c): c is LightDef => c.kind === 'light');
+    const newGroups = copies.filter((c): c is GroupDef => c.kind === 'group');
+    const newSubjects = copies.filter((c): c is SubjectDef => c.kind === 'subject');
+    // subject 需重算 bounds
+    const fixedSubjects = newSubjects.map((s) => ({ ...s, bounds: aabbOfSubject(s) }));
+    const newIds = copies.map((c) => c.id);
+    set({
+      scene: {
+        ...st.scene,
+        cameras: [...st.scene.cameras, ...newCameras],
+        lights: [...st.scene.lights, ...newLights],
+        subjects: [...st.scene.subjects, ...fixedSubjects],
+        groups: [...(st.scene.groups ?? []), ...newGroups],
+      },
+      history: record(st.scene, st.history),
+      selection: newIds,
+      lastSelectAnchor: newIds[newIds.length - 1] ?? null,
+      dirty: true,
+    });
+    return newIds;
+  },
   // T-028：改父级。默认 keepWorld=true 保持世界变换（BUG-007）；防成环与自引用。
   reparent: (id, newParentId, keepWorld = true) =>
     set((st) => {
@@ -1062,7 +1169,30 @@ export const usePlanner = create<PlannerState>((set, get) => ({
 
   // —— 视图 ——
   setTransformMode: (m) => set((st) => ({ view: { ...st.view, transformMode: m } })),
-  setProjection: (p) => set((st) => ({ view: { ...st.view, projection: p } })),
+  setProjection: (p) =>
+    set((st) => {
+      const pos: Vec3 =
+        p === 'top'
+          ? [0, 20, 0.001]
+          : p === 'front'
+            ? [0, 0.5, 20]
+            : p === 'side'
+              ? [20, 0.5, 0]
+              : [6, 5, 8];
+      const target: Vec3 = p === 'top' ? [0, 0, 0] : [0, 0.5, 0];
+      return {
+        view: {
+          ...st.view,
+          projection: p,
+          viewportCommand: {
+            id: ++viewportCommandId,
+            kind: 'setView',
+            position: pos,
+            target,
+          },
+        },
+      };
+    }),
   toggleCoverageHeatmap: () =>
     set((st) => ({ view: { ...st.view, showCoverageHeatmap: !st.view.showCoverageHeatmap } })),
   toggleFrustums: () => set((st) => ({ view: { ...st.view, showFrustums: !st.view.showFrustums } })),
@@ -1070,6 +1200,7 @@ export const usePlanner = create<PlannerState>((set, get) => ({
   toggleGuides: () => set((st) => ({ view: { ...st.view, showGuides: !st.view.showGuides } })),
   toggleViewportHud: () => set((st) => ({ view: { ...st.view, showViewportHud: !st.view.showViewportHud } })),
   setSnapStep: (step) => set((st) => ({ view: { ...st.view, snapStep: step } })),
+  setRotationSnapStep: (step) => set((st) => ({ view: { ...st.view, rotationSnapStep: step } })),
   setViewSnapStep: (step) => set((st) => ({ view: { ...st.view, snapStep: step } })),
   // T-027 世界/局部坐标系
   gizmoSpace: 'world',
@@ -1098,6 +1229,38 @@ export const usePlanner = create<PlannerState>((set, get) => ({
             kind: 'focus',
             target: focus.target,
             distance: focus.distance,
+          },
+        },
+      };
+    }),
+  viewSelectedCameraViewport: () =>
+    set((st) => {
+      const id = st.selection[st.selection.length - 1];
+      if (!id || !st.scene.cameras.some((cam) => cam.id === id)) return st;
+      return {
+        view: {
+          ...st.view,
+          // #WDD-gpt  2026-06-21 - 选中摄像机时让主视口捕捉到该摄像机位姿，供 Details 按钮与 F 快捷键共用
+          viewportCommand: {
+            id: ++viewportCommandId,
+            kind: 'viewCamera',
+            cameraId: id,
+          },
+        },
+      };
+    }),
+  setSelectedCameraFromViewport: () =>
+    set((st) => {
+      const id = st.selection[st.selection.length - 1];
+      if (!id || !st.scene.cameras.some((cam) => cam.id === id)) return st;
+      return {
+        view: {
+          ...st.view,
+          // #WDD-gpt  2026-06-21 - 把选中摄像机设置为当前主视口位姿，实际 Three 相机读数由 UnrealControls 消费命令后写回
+          viewportCommand: {
+            id: ++viewportCommandId,
+            kind: 'setCameraFromViewport',
+            cameraId: id,
           },
         },
       };

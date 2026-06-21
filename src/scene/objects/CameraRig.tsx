@@ -59,24 +59,60 @@ export function CameraRig({ cam, children, onClick }: { cam: CameraDef; children
   }, [corners]);
 
   // 相机机身（小三角锥朝向 -Z，表示朝向）
-  const bodyColor = selected ? ACCENT : DIM;
+  const bodyColor = selected ? '#48606f' : '#4b5663';
+  const edgeColor = selected ? '#79cfff' : '#74818f';
+  const redAccent = selected ? '#ff4141' : '#c51f2b';
+  const glassColor = selected ? '#d7f0ff' : '#223446';
 
   return (
     <group position={cam.transform.position} rotation={[deg(cam.transform.rotation[0]), deg(cam.transform.rotation[1]), deg(cam.transform.rotation[2])]} onClick={onClick}>
-      {/* 机身：小立方 + 前伸锥（朝 -Z） */}
-      <mesh>
-        <boxGeometry args={[0.25, 0.25, 0.4]} />
-        <meshStandardMaterial color={bodyColor} emissive={bodyColor} emissiveIntensity={selected ? 0.5 : 0.2} />
+      {/* #WDD-gpt  2026-06-21 - 摄像机实体原点就是镜头光心；Z CAM 风格方盒机身向本地 +Z 后移，视锥和仿真位置都从镜头中心出发 */}
+      <group position={[0, 0, 0.17]}>
+        <mesh>
+          <boxGeometry args={[0.36, 0.27, 0.22]} />
+          <meshStandardMaterial color={bodyColor} roughness={0.58} metalness={0.12} emissive={selected ? '#0a2b3d' : '#1a222b'} emissiveIntensity={selected ? 0.18 : 0.08} />
+        </mesh>
+        <mesh position={[0, 0.151, 0]}>
+          <boxGeometry args={[0.3, 0.018, 0.18]} />
+          <meshStandardMaterial color={edgeColor} roughness={0.5} metalness={0.25} />
+        </mesh>
+        <mesh position={[-0.191, 0, 0]}>
+          <boxGeometry args={[0.016, 0.2, 0.16]} />
+          <meshStandardMaterial color={edgeColor} roughness={0.55} metalness={0.22} />
+        </mesh>
+        <mesh position={[0.191, 0, 0]}>
+          <boxGeometry args={[0.016, 0.2, 0.16]} />
+          <meshStandardMaterial color={edgeColor} roughness={0.55} metalness={0.22} />
+        </mesh>
+        <mesh position={[-0.13, 0.075, -0.116]}>
+          <boxGeometry args={[0.055, 0.032, 0.01]} />
+          <meshStandardMaterial color={redAccent} roughness={0.32} metalness={0.08} emissive={redAccent} emissiveIntensity={selected ? 0.45 : 0.22} />
+        </mesh>
+        <mesh position={[0.13, -0.072, -0.116]}>
+          <boxGeometry args={[0.045, 0.024, 0.01]} />
+          <meshStandardMaterial color={redAccent} roughness={0.36} metalness={0.08} emissive={redAccent} emissiveIntensity={selected ? 0.32 : 0.16} />
+        </mesh>
+      </group>
+      <mesh position={[0, 0, 0.052]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.118, 0.105, 0.12, 36]} />
+        <meshStandardMaterial color={edgeColor} roughness={0.4} metalness={0.35} emissive={selected ? '#0a3950' : '#000000'} emissiveIntensity={selected ? 0.14 : 0.02} />
       </mesh>
-      {/* 镜头朝向指示（-Z 方向小锥） */}
-      <mesh position={[0, 0, -0.3]} rotation={[Math.PI / 2, 0, 0]}>
-        <coneGeometry args={[0.12, 0.2, 12]} />
-        <meshStandardMaterial color={bodyColor} emissive={bodyColor} emissiveIntensity={0.3} />
+      <mesh position={[0, 0, 0.002]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.088, 0.088, 0.026, 36]} />
+        <meshStandardMaterial color="#2f3a45" roughness={0.28} metalness={0.35} />
+      </mesh>
+      <mesh rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.072, 0.072, 0.012, 32]} />
+        <meshStandardMaterial color={glassColor} roughness={0.12} metalness={0.05} emissive={selected ? ACCENT : '#0b1a27'} emissiveIntensity={selected ? 0.35 : 0.18} />
+      </mesh>
+      <mesh position={[0, 0, -0.012]}>
+        <torusGeometry args={[0.079, 0.006, 8, 32]} />
+        <meshStandardMaterial color={redAccent} roughness={0.28} metalness={0.18} emissive={redAccent} emissiveIntensity={selected ? 0.28 : 0.12} />
       </mesh>
 
       {/* #WDD-gpt 2026-06-21 - 摄像机名字 + 视场角标签（Billboard 朝向视口相机） */}
       {showGuides && (
-        <Billboard position={[0, 0.32, 0]}>
+        <Billboard position={[0, 0.32, 0.14]}>
           <Text
             fontSize={0.13}
             color={selected ? ACCENT : '#cfd6e0'}
@@ -102,8 +138,8 @@ export function CameraRig({ cam, children, onClick }: { cam: CameraDef; children
       )}
 
       {selected && (
-        <mesh>
-          <boxGeometry args={[0.35, 0.35, 0.5]} />
+        <mesh position={[0, 0.02, 0.1]}>
+          <boxGeometry args={[0.44, 0.34, 0.42]} />
           <meshBasicMaterial color={ACCENT} wireframe />
         </mesh>
       )}

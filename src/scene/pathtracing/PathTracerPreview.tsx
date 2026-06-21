@@ -11,6 +11,7 @@
  */
 import { useEffect } from 'react';
 import { useThree } from '@react-three/fiber';
+import * as THREE from 'three';
 import { WebGLPathTracer } from 'three-gpu-pathtracer';
 import { usePlanner } from '@/state/store';
 import {
@@ -18,10 +19,13 @@ import {
   type PathTracingSnapshotRequest,
   subscribePathTracingSnapshot,
 } from './pathTracingSnapshot';
+import { createPathTracingSceneSnapshot, disposePathTracingSceneSnapshot } from './pathTracingSceneSnapshot';
 
 function nextFrame(): Promise<void> {
   return new Promise((resolve) => window.requestAnimationFrame(() => resolve()));
 }
+
+const SNAPSHOT_TIMEOUT_MS = 20_000;
 
 export function PathTracerPreview() {
   const { camera, gl, invalidate, scene } = useThree();
@@ -50,6 +54,8 @@ export function PathTracerPreview() {
       const sampleCount = Math.max(1, Math.min(Math.floor(detail.samples), 64));
       const bounceCount = Math.max(1, Math.min(Math.floor(detail.bounces), 8));
       let pathTracer: WebGLPathTracer | null = null;
+      let snapshotScene: THREE.Scene | null = null;
+      const startedAt = performance.now();
       try {
         emitPathTracingSnapshotStatus({
           id: detail.id,
@@ -63,16 +69,23 @@ export function PathTracerPreview() {
         pathTracer.tiles.set(1, 1);
         pathTracer.dynamicLowRes = false;
         pathTracer.renderToCanvas = true;
-        pathTracer.setScene(scene, camera);
+        snapshotScene = createPathTracingSceneSnapshot(scene);
+        pathTracer.setScene(snapshotScene, camera);
         pathTracer.reset();
 
         for (let i = 0; i < sampleCount && !cancelled; i++) {
+          if (performance.now() - startedAt > SNAPSHOT_TIMEOUT_MS) {
+            throw new Error(`timed out after ${SNAPSHOT_TIMEOUT_MS / 1000}s`);
+          }
           pathTracer.renderSample();
           await nextFrame();
         }
         if (cancelled) return;
         const filename = `camplan_pt_snapshot_${Date.now()}.png`;
         const dataURL = gl.domElement.toDataURL('image/png');
+        if (!dataURL.startsWith('data:image/png')) {
+          throw new Error('canvas readback did not return a PNG image');
+        }
         emitPathTracingSnapshotStatus({
           id: detail.id,
           state: 'complete',
@@ -87,6 +100,7 @@ export function PathTracerPreview() {
         log('error', message);
       } finally {
         pathTracer?.dispose();
+        if (snapshotScene) disposePathTracingSceneSnapshot(snapshotScene);
         invalidate();
         busy = false;
       }

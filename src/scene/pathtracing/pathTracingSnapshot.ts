@@ -19,14 +19,16 @@ let nextId = 1;
 
 export function requestPathTracingSnapshot(request: Omit<PathTracingSnapshotRequest, 'id'>): number {
   const fullRequest = { ...request, id: nextId++ };
-  // #WDD-gpt  2026-06-21 - 用模块级队列把右侧设置面板请求交给 Canvas 内的 PathTracerPreview 执行
+  // #WDD-gpt  2026-06-21 - 先回传排队状态，再异步派发到 Canvas，避免面板本地 queued 状态覆盖完成/错误状态
   emitPathTracingSnapshotStatus({
     id: fullRequest.id,
-    state: listener ? 'rendering' : 'queued',
-    message: listener ? 'PT snapshot request sent' : 'Waiting for viewport renderer',
+    state: 'queued',
+    message: 'PT snapshot queued',
   });
-  if (listener) listener(fullRequest);
-  else pending.push(fullRequest);
+  window.setTimeout(() => {
+    if (listener) listener(fullRequest);
+    else pending.push(fullRequest);
+  }, 0);
   return fullRequest.id;
 }
 

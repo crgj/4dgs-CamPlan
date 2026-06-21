@@ -130,7 +130,7 @@ export const defaultGroup = (
   return { ...base, ...overrides };
 };
 
-/** 默认空场景。 */
+/** 默认空场景（无实体；地面由 env.ground 平面渲染）。 */
 export const defaultScene = (): SceneDef => ({
   version: SCHEMA_VERSION,
   cameras: [],

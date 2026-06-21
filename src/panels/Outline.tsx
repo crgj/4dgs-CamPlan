@@ -42,6 +42,8 @@ export function Outline() {
 
   // T-028：类型过滤
   const [typeFilter, setTypeFilter] = useState<Set<string>>(new Set(['camera', 'light', 'subject', 'group']));
+  const allTypeFilters = ['camera', 'light', 'subject', 'group'] as const;
+  const isAllTypesActive = allTypeFilters.every((kind) => typeFilter.has(kind));
   const toggleTypeFilter = (kind: string) => {
     setTypeFilter((prev) => {
       const next = new Set(prev);
@@ -49,6 +51,9 @@ export function Outline() {
       else next.add(kind);
       return next;
     });
+  };
+  const setAllTypeFilters = () => {
+    setTypeFilter((prev) => (prev.size === allTypeFilters.length ? new Set() : new Set(allTypeFilters)));
   };
 
   // T-028：右键菜单
@@ -234,7 +239,7 @@ export function Outline() {
           else select(entity.id, e.ctrlKey || e.metaKey);
         }}
         onDoubleClick={() => handleDoubleClick(entity)}
-        className={`group relative flex h-[var(--row-h)] items-center gap-2 pr-3 text-[var(--text-base)] cursor-pointer transition-colors hover:bg-[var(--color-panel-raised)] ${
+        className={`group relative flex h-[var(--row-h)] items-center gap-2 pr-3 text-[var(--text-base)] cursor-pointer transition-colors outline-row-hover ${
           isSelected
             ? 'bg-[var(--color-select-fill)] text-[var(--color-text)]'
             : 'text-[var(--color-text)]'
@@ -348,7 +353,7 @@ export function Outline() {
           else select(entity.id, e.ctrlKey || e.metaKey);
         }}
         onDoubleClick={() => handleDoubleClick(entity)}
-        className={`group relative flex h-[var(--row-h)] items-center gap-2 px-3 pr-3 text-[var(--text-base)] cursor-pointer transition-colors hover:bg-[var(--color-panel-raised)] ${
+        className={`group relative flex h-[var(--row-h)] items-center gap-2 px-3 pr-3 text-[var(--text-base)] cursor-pointer transition-colors outline-row-hover ${
           isSelected
             ? 'bg-[var(--color-select-fill)] text-[var(--color-text)]'
             : 'text-[var(--color-text)]'
@@ -417,44 +422,66 @@ export function Outline() {
   return (
     <div className="flex h-full flex-col bg-[var(--color-panel)] text-[var(--color-text)]">
       {/* 搜索框 + 类型过滤（T-028） */}
-      <div className="flex h-9 shrink-0 flex-col justify-center gap-1 border-b border-[var(--color-panel-border)] px-2 bg-[var(--color-panel)]">
-        <div className="relative flex-1">
+      <div className="shrink-0 border-b border-[var(--color-panel-border)] bg-[var(--color-panel)] px-2 py-2">
+        {/* #WDD-gpt  2026-06-21 - 大纲顶部对齐 ContentBrowser：第一行搜索，第二行文字分类 */}
+        <div className="mb-2 flex h-7 items-center gap-1 rounded-[var(--radius-sm)] border border-[var(--color-panel-border)] bg-[var(--color-recessed)] px-2">
+          <svg
+            className="h-3.5 w-3.5 shrink-0 text-[var(--color-text-faint)]"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <circle cx="11" cy="11" r="7" />
+            <path d="m20 20-3.2-3.2" />
+          </svg>
           <input
             type="text"
-            className="w-full h-6 rounded-sm bg-[var(--color-recessed)] border border-[var(--color-panel-border)] pl-6 pr-2 text-[var(--text-base)] text-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none placeholder-[var(--color-text-faint)]"
+            className="h-full min-w-0 flex-1 bg-transparent text-[11px] text-[var(--color-text)] outline-none placeholder:text-[var(--color-text-faint)]"
             placeholder={t('searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-          <svg
-            className="absolute left-1.5 top-1.5 w-3 h-3 fill-[var(--color-text-dim)]"
-            viewBox="0 0 16 16"
-          >
-            <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z" />
-          </svg>
         </div>
-        <div className="flex gap-1">
-          {(['camera', 'light', 'subject', 'group'] as const).map((kind) => (
+        <div className="flex flex-wrap gap-1">
+          <button
+            type="button"
+            onClick={setAllTypeFilters}
+            className={`h-6 rounded-[var(--radius-sm)] border px-2 text-[10px] ${
+              isAllTypesActive
+                ? 'border-[var(--color-accent)] bg-[var(--color-select-fill)] text-[var(--color-text)]'
+                : 'border-[var(--color-panel-border)] bg-[var(--color-panel-raised)] text-[var(--color-text-dim)] hover:text-[var(--color-text)]'
+            }`}
+          >
+            {locale === 'zh' ? '全部' : 'All'}
+          </button>
+          {allTypeFilters.map((kind) => {
+            const labels = {
+              camera: locale === 'zh' ? '相机' : 'Camera',
+              light: locale === 'zh' ? '灯光' : 'Light',
+              subject: locale === 'zh' ? '主体' : 'Subject',
+              group: locale === 'zh' ? '组' : 'Group',
+            };
+            return (
             <button
               key={kind}
               type="button"
               onClick={() => toggleTypeFilter(kind)}
-              className={`h-5 rounded-[var(--radius-sm)] border px-1.5 text-[9px] uppercase ${
+              aria-pressed={typeFilter.has(kind)}
+              className={`h-6 rounded-[var(--radius-sm)] border px-2 text-[10px] ${
                 typeFilter.has(kind)
                   ? 'border-[var(--color-accent)] bg-[var(--color-select-fill)] text-[var(--color-text)]'
-                  : 'border-[var(--color-panel-border)] bg-[var(--color-recessed)] text-[var(--color-text-faint)]'
+                  : 'border-[var(--color-panel-border)] bg-[var(--color-panel-raised)] text-[var(--color-text-dim)] hover:text-[var(--color-text)]'
               }`}
               title={kind}
             >
-              {kind === 'camera'
-                ? locale === 'zh' ? '相机' : 'Cam'
-                : kind === 'light'
-                  ? locale === 'zh' ? '灯' : 'Light'
-                  : kind === 'subject'
-                    ? locale === 'zh' ? '主体' : 'Subj'
-                    : locale === 'zh' ? '组' : 'Grp'}
+              {labels[kind]}
             </button>
-          ))}
+            );
+          })}
         </div>
       </div>
 

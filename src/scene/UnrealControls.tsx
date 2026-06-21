@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { usePlanner } from '@/state/store';
+import { getWorldTransform, rad2deg } from '@/lib/math';
 
 export function UnrealControls() {
   const { camera, gl } = useThree();
@@ -40,8 +41,36 @@ export function UnrealControls() {
   useEffect(() => {
     if (!viewportCommand) return;
 
+    const clearPointerState = () => {
+      // #WDD-gpt  2026-06-21 - 视角切换会瞬时重设相机位姿，必须清掉此前 mousedown/移动键暂存，避免切换后继续拖动旧导航状态
+      state.current.isRMB = false;
+      state.current.isMMB = false;
+      state.current.keys.w = false;
+      state.current.keys.a = false;
+      state.current.keys.s = false;
+      state.current.keys.d = false;
+      state.current.keys.q = false;
+      state.current.keys.e = false;
+      state.current.keys.shift = false;
+      setIsCameraNavigating(false);
+    };
+    clearPointerState();
+
     const lookAt = (target: THREE.Vector3) => {
+      // #WDD-gpt  2026-06-21 - 从 GizmoViewport 轴向视图返回时，先恢复世界 Y 为相机 up，避免透视视图上下方向沿用轴向导航状态
+      camera.up.set(0, 1, 0);
       camera.lookAt(target);
+      state.current.euler.setFromQuaternion(camera.quaternion);
+    };
+
+    const setCameraFromTransform = (position: readonly [number, number, number], rotation: readonly [number, number, number]) => {
+      camera.position.set(position[0], position[1], position[2]);
+      camera.rotation.set(
+        (rotation[0] * Math.PI) / 180,
+        (rotation[1] * Math.PI) / 180,
+        (rotation[2] * Math.PI) / 180,
+        'XYZ',
+      );
       state.current.euler.setFromQuaternion(camera.quaternion);
     };
 
@@ -52,19 +81,68 @@ export function UnrealControls() {
       return;
     }
 
-    const target = new THREE.Vector3(
-      viewportCommand.target[0],
-      viewportCommand.target[1],
-      viewportCommand.target[2],
-    );
-    const forward = new THREE.Vector3();
-    camera.getWorldDirection(forward);
-    if (forward.lengthSq() < 1e-6) {
-      forward.set(-0.55, -0.45, -0.7).normalize();
+    if (viewportCommand.kind === 'setView') {
+      const target = new THREE.Vector3(
+        viewportCommand.target[0],
+        viewportCommand.target[1],
+        viewportCommand.target[2],
+      );
+      camera.position.set(
+        viewportCommand.position[0],
+        viewportCommand.position[1],
+        viewportCommand.position[2],
+      );
+      lookAt(target);
+      return;
     }
-    camera.position.copy(target).addScaledVector(forward, -viewportCommand.distance);
-    lookAt(target);
-  }, [camera, viewportCommand]);
+
+    if (viewportCommand.kind === 'viewCamera') {
+      const planner = usePlanner.getState();
+      const cam = planner.scene.cameras.find((candidate) => candidate.id === viewportCommand.cameraId);
+      if (!cam) return;
+      const allEntities = [
+        ...planner.scene.cameras,
+        ...planner.scene.lights,
+        ...planner.scene.subjects,
+        ...(planner.scene.groups ?? []),
+      ];
+      const world = getWorldTransform(cam, allEntities);
+      // #WDD-gpt  2026-06-21 - F 捕捉视点到摄像机：主视口光心与选中 CameraDef 光心一致
+      setCameraFromTransform(world.position, world.rotation);
+      return;
+    }
+
+    if (viewportCommand.kind === 'setCameraFromViewport') {
+      const planner = usePlanner.getState();
+      const cam = planner.scene.cameras.find((candidate) => candidate.id === viewportCommand.cameraId);
+      if (!cam) return;
+      const euler = new THREE.Euler().setFromQuaternion(camera.quaternion, 'XYZ');
+      planner.updateCamera(cam.id, {
+        transform: {
+          ...cam.transform,
+          position: [camera.position.x, camera.position.y, camera.position.z],
+          rotation: [rad2deg(euler.x), rad2deg(euler.y), rad2deg(euler.z)],
+        },
+      });
+      return;
+    }
+
+    if (viewportCommand.kind === 'focus') {
+      const target = new THREE.Vector3(
+        viewportCommand.target[0],
+        viewportCommand.target[1],
+        viewportCommand.target[2],
+      );
+      const forward = new THREE.Vector3();
+      camera.getWorldDirection(forward);
+      if (forward.lengthSq() < 1e-6) {
+        forward.set(-0.55, -0.45, -0.7).normalize();
+      }
+      camera.position.copy(target).addScaledVector(forward, -viewportCommand.distance);
+      lookAt(target);
+      return;
+    }
+  }, [camera, viewportCommand, setIsCameraNavigating]);
 
   useEffect(() => {
     const dom = gl.domElement;
@@ -76,6 +154,9 @@ export function UnrealControls() {
       if (isTransforming) return;
       // 右键 (RMB) 开始漫游
       if (e.button === 2) {
+        // #WDD-gpt  2026-06-21 - GizmoViewport 点击 Y/X/Z 会直接修改相机 quaternion；
+        // RMB 导航开始前必须同步 euler，否则第一次 mousemove 会把旧角度写回导致视角闪跳。
+        state.current.euler.setFromQuaternion(camera.quaternion);
         state.current.isRMB = true;
         // #WDD-gpt  2026-06-20 - RMB 飞行导航期间全局编辑快捷键暂停，键盘只控制相机
         setIsCameraNavigating(true);
