@@ -10,6 +10,9 @@ import { lookAtRotation } from './math';
 import { uid } from './id';
 
 const TAU = Math.PI * 2;
+// #WDD-gpt  2026-06-21 - 默认场景模型路径跟随 Vite base，避免 GitHub Pages 子路径部署时 USDZ 资源 404
+const publicUrl = (path: string): string =>
+  `${import.meta.env.BASE_URL}${path.replace(/^\/+/, '')}`;
 
 /**
  * 构造环形相机阵列（N 台等角分布、俯角约 22.6°、半径 6m，看向中心主体）。
@@ -54,7 +57,7 @@ export function buildExampleScene(camCount = 8): SceneDef {
     transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] },
     geometry: {
       type: 'mesh',
-      src: '/library/models/Human/Boxer/Female_Muay_Thai_Boxer.usdz',
+      src: publicUrl('/library/models/Human/Boxer/Female_Muay_Thai_Boxer.usdz'),
       bbox: [0.5, 1.7, 0.3],
       animate: true,
     },

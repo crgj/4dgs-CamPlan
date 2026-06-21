@@ -112,6 +112,7 @@ export function Inspector() {
     updateTransform,
     updateEnv,
     renameEntity,
+    reparentMany,
     commitHistory,
     scene,
     selection,
@@ -318,6 +319,33 @@ export function Inspector() {
                 commitHistory();
               }}
             />
+          </PropertyRow>
+        </div>
+
+        {/* #WDD-gpt 2026-06-21 - 父物体设置（多选）：把全部选中实体 reparent 到所选父级 */}
+        <div className="border-b border-[var(--color-panel-border)] px-3 py-2">
+          <PropertyRow label={locale === 'zh' ? '父物体 (Parent)' : 'Parent'}>
+            <select
+              className="h-[var(--control-h)] flex-1 rounded-[var(--radius-sm)] border border-[var(--color-panel-border)] bg-[var(--color-recessed)] px-2 text-[var(--color-text)] outline-none focus:border-[var(--color-accent)]"
+              value={selectedEntities.every((e) => e.parentId === selectedEntities[0].parentId) ? selectedEntities[0].parentId ?? '' : '__mixed__'}
+              onChange={(e) => {
+                const v = e.target.value;
+                const newParent = v === '' ? null : v;
+                reparentMany(selectedEntities.map((x) => x.id), newParent, true);
+              }}
+            >
+              <option value="__mixed__" disabled>
+                {locale === 'zh' ? '— 混合 —' : '— Mixed —'}
+              </option>
+              <option value="">{locale === 'zh' ? '（无 / 根级）' : '(None / Root)'}</option>
+              {allEntities
+                .filter((cand) => !selectedEntities.some((sel) => sel.id === cand.id))
+                .map((cand) => (
+                  <option key={cand.id} value={cand.id}>
+                    {cand.name} ({cand.kind})
+                  </option>
+                ))}
+            </select>
           </PropertyRow>
         </div>
 

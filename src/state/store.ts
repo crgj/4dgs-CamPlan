@@ -186,6 +186,12 @@ export interface PlannerState {
   duplicateEntity: (id: EntityId) => EntityId | null;
   /** T-028：改父级，默认保持世界变换（BUG-007），防成环。 */
   reparent: (id: EntityId, newParentId: EntityId | null, keepWorld?: boolean) => void;
+  /**
+   * 批量改父级（多选拖拽 / 细节面板多选设置父物体）。
+   * 把 ids 中每个实体 reparent 到 newParentId（跳过 newParentId 自身、防成环）。
+   * #WDD-gpt 2026-06-21
+   */
+  reparentMany: (ids: EntityId[], newParentId: EntityId | null, keepWorld?: boolean) => void;
 
   // —— 选择 ——
   select: (id: EntityId | null, additive?: boolean) => void;
@@ -368,6 +374,40 @@ function collectSubtreeIds(scene: SceneDef, id: EntityId): EntityId[] {
     if (kids) for (const k of kids) stack.push(k);
   }
   return result;
+}
+
+/**
+ * 按 Outline 面板的**显示顺序**扁平化所有实体 id（深度优先：根→子→孙）。
+ *
+ * #WDD-gpt 2026-06-21 - Shift+click 范围选择必须按显示顺序，而非场景数组的扁平顺序
+ * （cameras→lights→subjects→groups）。后者会导致「cam7 作为父物体后，选 cam1~cam8 仍错误
+ * 选中 cam7」——因为数组顺序与树形显示顺序不一致。这里复刻 Outline 的渲染序：
+ *   - 根实体（无 parentId 或 parentId 不存在）按场景数组顺序
+ *   - 每个实体之后紧跟其子代（递归，子代按各自在数组中的顺序）
+ */
+function flattenTreeDisplayOrder(scene: SceneDef): EntityId[] {
+  const all = [...scene.cameras, ...scene.lights, ...scene.subjects, ...(scene.groups ?? [])];
+  const byId = new Map(all.map((e) => [e.id, e]));
+  // childrenOf[id] = 该 id 的直接子代（保持各类型数组内顺序）
+  const childrenOf = new Map<EntityId, EntityId[]>();
+  for (const e of all) {
+    if (e.parentId) {
+      const arr = childrenOf.get(e.parentId) ?? [];
+      arr.push(e.id);
+      childrenOf.set(e.parentId, arr);
+    }
+  }
+  const order: EntityId[] = [];
+  const visit = (id: EntityId) => {
+    order.push(id);
+    const kids = childrenOf.get(id);
+    if (kids) for (const k of kids) visit(k);
+  };
+  // 根实体：无 parentId 或 parentId 不指向任何现存实体。按场景数组顺序遍历。
+  for (const e of all) {
+    if (!e.parentId || !byId.has(e.parentId)) visit(e.id);
+  }
+  return order;
 }
 
 /** T-028：从列主序 4×4 矩阵分解出 TRS（平移/欧拉角/缩放）。用于 keep-world reparent。 */
@@ -808,6 +848,65 @@ export const usePlanner = create<PlannerState>((set, get) => ({
       };
       return { scene, history: record(st.scene, st.history), dirty: true };
     }),
+  // #WDD-gpt 2026-06-21 - 批量改父级：逐个应用 reparent 逻辑（复用其防成环与 keep-world），
+  // 整批只记录一次历史 → 撤销时一次性回滚。
+  reparentMany: (ids, newParentId, keepWorld = true) => {
+    const unique = Array.from(new Set(ids)).filter((id) => id !== newParentId);
+    set((st) => {
+      let scene = st.scene;
+      for (const id of unique) {
+        if (newParentId !== null && isDescendant(scene, newParentId, id)) continue;
+        if (id === newParentId) continue;
+        const allEntities: HierarchicalEntity[] = [
+          ...scene.cameras,
+          ...scene.lights,
+          ...scene.subjects,
+          ...(scene.groups ?? []),
+        ];
+        const target = allEntities.find((e) => e.id === id);
+        if (!target) continue;
+        // keep-world：以当前世界变换反算到新父级下的局部变换
+        let newTransform = target.transform;
+        if (keepWorld) {
+          const world = getWorldTransform(target, allEntities);
+          if (newParentId === null) {
+            newTransform = {
+              position: world.position,
+              rotation: world.rotation,
+              scale: target.transform.scale ?? [1, 1, 1],
+            };
+          } else {
+            const parent = allEntities.find((e) => e.id === newParentId);
+            if (parent) {
+              const parentWorld = getWorldTransform(parent, allEntities);
+              const parentMat = composeMatrix(parentWorld.position, parentWorld.rotation, parentWorld.scale);
+              const worldMat = composeMatrix(world.position, world.rotation, world.scale ?? [1, 1, 1]);
+              const localMat = multiply4(invert4(parentMat), worldMat);
+              newTransform = decomposeTRS(localMat, target.transform.scale ?? [1, 1, 1]);
+            }
+          }
+        }
+        const patchParent = <T extends { id: EntityId; parentId?: EntityId; transform: Transform }>(
+          arr: T[],
+        ): T[] =>
+          arr.map((e) =>
+            e.id === id ? { ...e, parentId: newParentId ?? undefined, transform: newTransform } : e,
+          );
+        scene = {
+          ...scene,
+          cameras: patchParent(scene.cameras),
+          lights: patchParent(scene.lights),
+          groups: patchParent(scene.groups ?? []),
+          subjects: scene.subjects.map((s) =>
+            s.id === id
+              ? { ...s, parentId: newParentId ?? undefined, transform: newTransform, bounds: aabbOfSubject({ ...s, transform: newTransform }) }
+              : s,
+          ),
+        };
+      }
+      return { scene, history: record(st.scene, st.history), dirty: true };
+    });
+  },
 
   // —— 选择 ——
   // #WDD-gpt 2026-06-21 - select 记录锚点 lastSelectAnchor，供 Shift+click 范围选择使用。
@@ -827,16 +926,12 @@ export const usePlanner = create<PlannerState>((set, get) => ({
   clearSelection: () => set({ selection: [] }),
   selectSubtree: (id) =>
     set((st) => ({ selection: collectSubtreeIds(st.scene, id) })),
-  // #WDD-gpt 2026-06-21 - Shift+click 范围选择：锚点到当前 id 之间的实体全部选中。
+  // #WDD-gpt 2026-06-21 - Shift+click 范围选择：按 Outline 显示顺序（树形深度优先），
+  // 选中锚点到当前 id 之间的所有可见实体。修复「cam7 作父后选 cam1~cam8 仍误选 cam7」
+  // 的 bug——旧实现用场景数组扁平顺序，与树形显示顺序不一致。
   selectRange: (id) =>
     set((st) => {
-      const flat = [
-        ...st.scene.cameras,
-        ...st.scene.lights,
-        ...st.scene.subjects,
-        ...(st.scene.groups ?? []),
-      ];
-      const ids = flat.map((e) => e.id);
+      const ids = flattenTreeDisplayOrder(st.scene);
       const anchor = st.lastSelectAnchor;
       if (!anchor || !ids.includes(anchor) || !ids.includes(id)) {
         return { selection: [id], lastSelectAnchor: id };

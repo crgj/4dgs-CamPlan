@@ -17,9 +17,32 @@
  * 预设 JSON 用 geometry.src 引用（如 Juliette 人物）。
  */
 import type { LibraryAsset } from './libraryAsset';
+import type { SubjectDef } from '@/types';
 import { listAssets, saveAsset } from './libraryAsset';
 
-const INDEX_URL = '/library/index.json';
+// #WDD-gpt  2026-06-21 - public 资源要跟随 Vite base，GitHub Pages 项目页部署在子路径时不能硬编码根路径
+const publicUrl = (path: string): string =>
+  `${import.meta.env.BASE_URL}${path.replace(/^\/+/, '')}`;
+
+const normalizePublicAssetUrls = (asset: LibraryAsset): LibraryAsset => {
+  const patchSubjectDef = (subject: Partial<SubjectDef>) => {
+    const geometry = subject.geometry;
+    if (geometry?.type !== 'mesh') return;
+    const src = geometry.src;
+    if (src?.startsWith('/library/')) geometry.src = publicUrl(src);
+  };
+
+  if (asset.payload.type === 'subject') {
+    patchSubjectDef(asset.payload.def);
+  } else if (asset.payload.type === 'composite') {
+    asset.payload.def.children.forEach((child) => {
+      if (child.kind === 'subject') patchSubjectDef(child.def);
+    });
+  }
+  return asset;
+};
+
+const INDEX_URL = publicUrl('/library/index.json');
 
 /** index.json 清单结构。 */
 interface PresetIndex {
@@ -42,10 +65,10 @@ export async function loadBuiltinPresets(): Promise<LibraryAsset[]> {
     index.presets.map(async (rel) => {
       try {
         // rel 形如 "presets/preset-car.json"，拼成绝对 public 路径
-        const url = rel.startsWith('/') ? rel : `/library/${rel}`;
+        const url = rel.startsWith('/') ? publicUrl(rel) : publicUrl(`/library/${rel}`);
         const res = await fetch(url);
         if (!res.ok) return;
-        const asset = (await res.json()) as LibraryAsset;
+        const asset = normalizePublicAssetUrls((await res.json()) as LibraryAsset);
         // 补齐时间戳（JSON 里可能省略）
         if (!asset.createdAt) asset.createdAt = new Date().toISOString();
         if (!asset.updatedAt) asset.updatedAt = new Date().toISOString();

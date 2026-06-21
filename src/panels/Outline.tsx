@@ -21,6 +21,8 @@ export function Outline() {
     select,
     selectRange,
     selectSubtree,
+    reparent,
+    reparentMany,
     removeEntity,
     renameEntity,
     updateCamera,
@@ -28,7 +30,6 @@ export function Outline() {
     updateSubject,
     updateGroup,
     duplicateEntity,
-    reparent,
     addGroup,
     enterGroupEdit,
     focusSelectedViewport,
@@ -207,8 +208,16 @@ export function Outline() {
           const draggedId = e.dataTransfer.getData('application/x-planner-entity');
           e.preventDefault();
           setDragOverId(null);
-          if (draggedId && draggedId !== entity.id) {
-            // T-028：拖拽改父级，默认保持世界变换（BUG-007）；reparent 内部防成环
+          if (!draggedId || draggedId === entity.id) return;
+          // #WDD-gpt 2026-06-21 - 多选拖拽：拖动的实体在当前选择集中时，把全部选中实体
+          // 一起 reparent 到目标；否则仅移动被拖动的单个实体。
+          const movingIds =
+            selection.includes(draggedId as EntityId) && selection.length > 1
+              ? selection.filter((id) => id !== entity.id)
+              : [draggedId as EntityId];
+          if (movingIds.length > 1) {
+            reparentMany(movingIds, entity.id, true);
+          } else {
             reparent(draggedId as EntityId, entity.id, true);
           }
         }}
