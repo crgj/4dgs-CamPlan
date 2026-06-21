@@ -2,7 +2,7 @@
  * T-085/T-086 后处理与色调映射栈（src/scene/post/PostFXStack.tsx）。
  * Bloom + SSAO（可选）+ 色调映射（ACES/AgX/Filmic）。
  * 由 store.renderSettings 控制；draft 质量下禁用以保性能。
- * path tracing 模式下不叠加（PT 自带色彩）。
+ * path tracing 真正接管画布前仍保留标准后处理，避免占位开关导致渲染链路断开。
  */
 import { EffectComposer, Bloom, N8AO, ToneMapping } from '@react-three/postprocessing';
 import { ToneMappingMode } from 'postprocessing';
@@ -17,7 +17,7 @@ const modeMap: Record<string, ToneMappingMode> = {
 };
 
 export function PostFXStack() {
-  const { bloom, bloomIntensity, ssao, toneMapping, quality, pathTracing } = usePlanner(
+  const { bloom, bloomIntensity, ssao, toneMapping, quality } = usePlanner(
     (s) => s.renderSettings,
   );
   const sceneVersion = usePlanner((s) => [
@@ -40,8 +40,9 @@ export function PostFXStack() {
     };
   }, [bloom, quality, sceneVersion, ssao, toneMapping]);
 
-  // draft 质量或 path tracing 模式下不走后处理
-  if (quality === 'draft' || pathTracing) return null;
+  // draft 质量下不走后处理
+  // #WDD-gpt  2026-06-21 - PathTracerPreview 目前不输出 PT 帧，不能因 pathTracing 开关卸载标准后处理
+  if (quality === 'draft') return null;
   if (readyFrame === 0) return null;
 
   return (

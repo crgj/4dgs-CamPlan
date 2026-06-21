@@ -27,7 +27,8 @@ export function RenderRuntimeSync() {
       invalidate();
     });
     // #WDD-gpt  2026-06-20 - 新增实体后 SSAO/N8AO 偶发不刷新，短时定时强制重绘让深度/AO pass 收敛
-    const interval = ssao && quality !== 'draft' && !pathTracing
+    // #WDD-gpt  2026-06-21 - pathTracing 当前是占位开关，不应跳过标准渲染的 AO/阴影刷新同步
+    const interval = ssao && quality !== 'draft'
       ? window.setInterval(() => {
           gl.shadowMap.needsUpdate = true;
           invalidate();
