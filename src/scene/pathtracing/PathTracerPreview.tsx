@@ -14,22 +14,13 @@ import { useThree } from '@react-three/fiber';
 import { WebGLPathTracer } from 'three-gpu-pathtracer';
 import { usePlanner } from '@/state/store';
 import {
+  emitPathTracingSnapshotStatus,
   type PathTracingSnapshotRequest,
   subscribePathTracingSnapshot,
 } from './pathTracingSnapshot';
 
 function nextFrame(): Promise<void> {
   return new Promise((resolve) => window.requestAnimationFrame(() => resolve()));
-}
-
-function downloadCanvas(canvas: HTMLCanvasElement, filename: string): void {
-  const url = canvas.toDataURL('image/png');
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
 }
 
 export function PathTracerPreview() {
@@ -60,6 +51,11 @@ export function PathTracerPreview() {
       const bounceCount = Math.max(1, Math.min(Math.floor(detail.bounces), 8));
       let pathTracer: WebGLPathTracer | null = null;
       try {
+        emitPathTracingSnapshotStatus({
+          id: detail.id,
+          state: 'rendering',
+          message: `PT snapshot rendering: ${sampleCount} samples / ${bounceCount} bounces`,
+        });
         log('info', `PT snapshot started: ${sampleCount} samples / ${bounceCount} bounces`);
         // #WDD-gpt  2026-06-21 - 静态快照只渲染有限样本并下载 PNG，不把 PT 接入实时主循环
         pathTracer = new WebGLPathTracer(gl);
@@ -75,10 +71,20 @@ export function PathTracerPreview() {
           await nextFrame();
         }
         if (cancelled) return;
-        downloadCanvas(gl.domElement, `camplan_pt_snapshot_${Date.now()}.png`);
+        const filename = `camplan_pt_snapshot_${Date.now()}.png`;
+        const dataURL = gl.domElement.toDataURL('image/png');
+        emitPathTracingSnapshotStatus({
+          id: detail.id,
+          state: 'complete',
+          message: `PT snapshot ready: ${sampleCount} samples`,
+          dataURL,
+          filename,
+        });
         log('info', `PT snapshot exported: ${sampleCount} samples`);
       } catch (err) {
-        log('error', `PT snapshot failed: ${err instanceof Error ? err.message : String(err)}`);
+        const message = `PT snapshot failed: ${err instanceof Error ? err.message : String(err)}`;
+        emitPathTracingSnapshotStatus({ id: detail.id, state: 'error', message });
+        log('error', message);
       } finally {
         pathTracer?.dispose();
         invalidate();

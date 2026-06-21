@@ -17,7 +17,7 @@
  *
  * 风格遵循 ue5-ui-reference：分类折叠 section、勾选/下拉/NumberInput、暗色色板。
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { usePlanner } from '@/state/store';
 import { useTranslation } from '@/lib/i18n';
 import { NumberInput } from '@/ui/NumberInput';
@@ -26,7 +26,11 @@ import {
   clampPathTracingSettings,
   type RenderQuality,
 } from '@/scene/RenderQuality';
-import { requestPathTracingSnapshot } from '@/scene/pathtracing/pathTracingSnapshot';
+import {
+  requestPathTracingSnapshot,
+  subscribePathTracingSnapshotStatus,
+  type PathTracingSnapshotStatus,
+} from '@/scene/pathtracing/pathTracingSnapshot';
 import { meterScene } from '@/sim/lightMeter';
 
 /** 折叠分区（UE5 Details 分组风格）。 */
@@ -97,6 +101,16 @@ export function RenderSettingsPanel() {
   const setRenderSettings = usePlanner((s) => s.setRenderSettings);
   const scene = usePlanner((s) => s.scene);
   const log = usePlanner((s) => s.log);
+  const [ptSnapshot, setPtSnapshot] = useState<PathTracingSnapshotStatus | null>(null);
+
+  useEffect(() => {
+    return subscribePathTracingSnapshotStatus((status) => {
+      setPtSnapshot((current) => {
+        if (current && status.id !== current.id) return current;
+        return status;
+      });
+    });
+  }, []);
 
   const profile = QUALITY_PROFILES[rs.quality];
   const clamped = clampPathTracingSettings(rs.quality, rs.ptSamples, rs.ptBounces);
@@ -131,6 +145,19 @@ export function RenderSettingsPanel() {
   };
 
   const zh = locale === 'zh';
+
+  const handlePtSnapshot = () => {
+    const id = requestPathTracingSnapshot({
+      samples: rs.ptSamples,
+      bounces: rs.ptBounces,
+    });
+    // #WDD-gpt  2026-06-21 - PT 快照异步生成，面板内立即显示状态，避免用户点击后看起来无响应
+    setPtSnapshot({
+      id,
+      state: 'queued',
+      message: zh ? 'PT 快照请求已发送...' : 'PT snapshot request sent...',
+    });
+  };
 
   return (
     <div className="h-full overflow-y-auto bg-[var(--color-panel)] text-[var(--color-text)]">
@@ -242,15 +269,38 @@ export function RenderSettingsPanel() {
             <div className="flex gap-2 px-3 py-2">
               <button
                 type="button"
-                onClick={() => requestPathTracingSnapshot({
-                  samples: rs.ptSamples,
-                  bounces: rs.ptBounces,
-                })}
+                onClick={handlePtSnapshot}
+                disabled={ptSnapshot?.state === 'queued' || ptSnapshot?.state === 'rendering'}
                 className="rounded-[var(--radius-sm)] border border-[var(--color-panel-border)] bg-[var(--color-recessed)] px-3 py-1 text-[11px] text-[var(--color-text)] hover:bg-[var(--color-panel-raised)]"
               >
-                {zh ? '生成 PT 快照 (PNG)' : 'Render PT Snapshot (PNG)'}
+                {ptSnapshot?.state === 'queued' || ptSnapshot?.state === 'rendering'
+                  ? (zh ? '生成中...' : 'Rendering...')
+                  : (zh ? '生成 PT 快照 (PNG)' : 'Render PT Snapshot (PNG)')}
               </button>
             </div>
+            {ptSnapshot && (
+              <div className="space-y-2 px-3 pb-2 text-[10px] text-[var(--color-text-faint)]">
+                <div className={ptSnapshot.state === 'error' ? 'text-[var(--color-danger)]' : ''}>
+                  {ptSnapshot.message}
+                </div>
+                {ptSnapshot.state === 'complete' && (
+                  <div className="space-y-2">
+                    <img
+                      src={ptSnapshot.dataURL}
+                      alt="Path tracing snapshot preview"
+                      className="max-h-40 w-full rounded-[var(--radius-sm)] border border-[var(--color-panel-border)] object-contain"
+                    />
+                    <a
+                      href={ptSnapshot.dataURL}
+                      download={ptSnapshot.filename}
+                      className="inline-flex rounded-[var(--radius-sm)] border border-[var(--color-panel-border)] bg-[var(--color-recessed)] px-2 py-1 text-[11px] text-[var(--color-text)] hover:bg-[var(--color-panel-raised)]"
+                    >
+                      {zh ? '下载 PNG' : 'Download PNG'}
+                    </a>
+                  </div>
+                )}
+              </div>
+            )}
           </>
         )}
       </Section>
