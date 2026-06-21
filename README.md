@@ -303,6 +303,24 @@ npm run lint        # ESLint
 
 > 以下截图展示 CamPlan 的核心界面与功能。所有截图来自实际运行中的 WebApp。
 
+### 视图切换 — 透视 / 顶视 / 前视 / 侧视
+
+![透视视图](./docs/screenshots/view-perspective.png)
+
+> 透视视图：默认 3D 视角，右键旋转/中键平移/滚轮缩放。
+
+![顶视图](./docs/screenshots/view-top.png)
+
+> 顶视图：正上方俯视，清晰展示相机环形阵列布局。通过 视图 → 顶视图 切换。
+
+![前视图](./docs/screenshots/view-front.png)
+
+> 前视图：正面朝向主体，HUD 右下角显示 "front"。
+
+![侧视图](./docs/screenshots/view-side.png)
+
+> 侧视图：侧面视角，展示主体侧影与相机分布。HUD 显示 "side"。
+
 ### 主界面 — 四区布局
 
 ![主界面](./docs/screenshots/main-layout.png)
