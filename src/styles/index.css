@@ -1,0 +1,161 @@
+@import 'tailwindcss';
+@import 'dockview/dist/styles/dockview.css';
+
+/*
+ * Planner 主题：**严格参考 Unreal Editor 5.8** 暗色主题（见 .agents/skills/ue5-ui-reference）。
+ * 色值取自 Slate Dark 主题实测近似（linear→sRGB），来源见 references/ue5-sources.md。
+ * 组件只能引用这些 CSS 变量，不写死颜色。冲突时以 ue5-ui-reference 为准。
+ */
+@theme {
+  /* —— 中性灰阶（冷灰调，不用纯黑/纯白）—— */
+  --color-canvas-bg: #1a1a1a; /* 视口/最底层底色，全 UI 最深 */
+  --color-panel: #252525; /* 主面板底（Details/Outliner/工具栏） */
+  --color-panel-raised: #2d2d2d; /* 抬升面/卡片/悬停行/弹出菜单 */
+  --color-panel-header: #303030; /* 分类标题条、面板标题条 */
+  --color-recessed: #1c1c1c; /* 凹陷：数值输入/下拉底（凹陷感） */
+  --color-panel-border: #3a3a3a; /* 细分隔线/面板边界，低对比 */
+
+  /* —— 文本（偏冷灰，非纯白）—— */
+  --color-text: #c0c0c0; /* 主文本 */
+  --color-text-dim: #8a8a8a; /* 标签/次要 */
+  --color-text-faint: #5a5a5a; /* 占位/禁用 */
+
+  /* —— 强调/选中（UE 蓝）—— */
+  --color-accent: #0a8fef; /* 选中边框/激活/链接；UE 标志色 */
+  --color-accent-hover: #3da4f5; /* 悬停加亮 */
+  --color-select-fill: #0a8fef33; /* 选中填充（半透明蓝） */
+
+  /* —— 状态色（仅状态用，非装饰）—— */
+  --color-warn: #e09f3e; /* 非致命告警（橙） */
+  --color-danger: #c83838; /* 盲区/删除/超阈值（暗红） */
+  --color-ok: #4cae50; /* 达标/健康（绿） */
+
+  /* —— 轴色 X/Y/Z（与 UE 及多数 DCC 一致；gizmo/向量输入/坐标轴统一）—— */
+  --color-axis-x: #c83838;
+  --color-axis-y: #4cae50;
+  --color-axis-z: #0a8fef;
+
+  /* —— 覆盖热图色阶（低→高；蓝→青绿→黄绿→橙黄→红）—— */
+  --color-heat-0: #2670a8;
+  --color-heat-1: #36b37e;
+  --color-heat-2: #97c93c;
+  --color-heat-3: #e0a538;
+  --color-heat-4: #c83838;
+
+  /* —— 字体 —— */
+  --font-sans: 'Inter', 'Roboto', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Cascadia Code', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* —— 圆角（UE 近乎直角，仅极小圆角）—— */
+  --radius-sm: 2px;
+  --radius-md: 3px;
+
+  /* —— 密度令牌（UE 编辑器信息密集）—— */
+  --row-h: 22px; /* 属性行高 */
+  --control-h: 24px; /* 控件高 */
+  --text-base: 12px; /* 基准字号（偏小） */
+  --text-label: 11px; /* 标签字号 */
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--color-canvas-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: 1.3; /* 紧凑，信息密集 */
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden; /* 桌面工具风：不滚动 */
+}
+
+/* 数值输入：去原生 spinner，便于自定义 scrub 交互（UE 风数值拖拽） */
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* 选中文本：弱化，避免编辑器内频繁选区高亮刺眼 */
+::selection {
+  background: var(--color-select-fill);
+  color: var(--color-text);
+}
+
+/* #WDD-gpt  2026-06-19 - Dockview 主题覆盖：保持 UE5 深色、紧凑、高密度编辑器外观 */
+.planner-dockview,
+.planner-dockview .dockview-theme-dark {
+  --dv-background-color: var(--color-canvas-bg);
+  --dv-paneview-active-outline-color: var(--color-accent);
+  --dv-tabs-and-actions-container-background-color: var(--color-panel-header);
+  --dv-activegroup-visiblepanel-tab-background-color: var(--color-panel);
+  --dv-activegroup-hiddenpanel-tab-background-color: var(--color-panel-header);
+  --dv-inactivegroup-visiblepanel-tab-background-color: var(--color-panel-header);
+  --dv-inactivegroup-hiddenpanel-tab-background-color: var(--color-panel-header);
+  --dv-tab-divider-color: var(--color-panel-border);
+  --dv-separator-border: var(--color-panel-border);
+  --dv-paneview-header-border-color: var(--color-panel-border);
+  --dv-group-view-background-color: var(--color-panel);
+  --dv-tabs-container-scrollbar-color: var(--color-panel-border);
+  --dv-icon-hover-background-color: var(--color-panel-raised);
+  --dv-floating-box-shadow: 0 10px 28px rgba(0, 0, 0, 0.38);
+}
+
+.planner-dockview .dv-tab {
+  font-size: 11px;
+  color: var(--color-text-dim);
+}
+
+.planner-dockview .dv-active-tab {
+  color: var(--color-text);
+}
+
+/* #WDD-gpt  2026-06-20 - 视口 HUD/Toolbar/速度控件改为更紧凑的视口浮层，并在窄窗口下自适应避让 */
+@media (max-width: 760px) {
+  .viewport-toolbar {
+    max-width: calc(100% - 1.5rem);
+    right: 0.5rem;
+  }
+
+  .viewport-hud {
+    top: auto;
+    right: 0.5rem;
+    bottom: 0.5rem;
+  }
+
+  .viewport-speed-control {
+    max-width: calc(100% - 9rem);
+    overflow: hidden;
+  }
+}
+
+@media (max-width: 460px) {
+  .viewport-toolbar {
+    gap: 2px;
+    font-size: 10px;
+  }
+
+  .viewport-toolbar button,
+  .viewport-toolbar select,
+  .viewport-toolbar input {
+    height: 22px;
+    max-width: 92px;
+  }
+
+  .viewport-speed-control {
+    max-width: calc(100% - 7rem);
+  }
+}

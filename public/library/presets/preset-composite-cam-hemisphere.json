@@ -1,0 +1,928 @@
+{
+  "id": "preset-composite-cam-hemisphere",
+  "kind": "composite",
+  "name": "半球阵列 (16)",
+  "category": "摄像机组",
+  "_builtinVersion": 2,
+  "createdAt": "2026-06-20T00:00:00.000Z",
+  "updatedAt": "2026-06-21T03:34:19.570Z",
+  "payload": {
+    "type": "composite",
+    "def": {
+      "children": [
+        {
+          "kind": "camera",
+          "def": {
+            "name": "Cam_01",
+            "model": "PINHOLE",
+            "fov": 55,
+            "aspect": 1.7777777777777777,
+            "near": 0.1,
+            "far": 100,
+            "resolution": {
+              "width": 1920,
+              "height": 1080
+            },
+            "exposure": {
+              "iso": 200,
+              "shutter": 0.004,
+              "aperture": 4
+            },
+            "enabled": true,
+            "focalLength": 24,
+            "sensorWidth": 36,
+            "transform": {
+              "position": [
+                3.5,
+                1,
+                0
+              ],
+              "rotation": [
+                -180,
+                90,
+                0
+              ],
+              "scale": [
+                1,
+                1,
+                1
+              ]
+            }
+          },
+          "local": {
+            "position": [
+              3.5,
+              1,
+              0
+            ],
+            "rotation": [
+              -180,
+              90,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "kind": "camera",
+          "def": {
+            "name": "Cam_02",
+            "model": "PINHOLE",
+            "fov": 55,
+            "aspect": 1.7777777777777777,
+            "near": 0.1,
+            "far": 100,
+            "resolution": {
+              "width": 1920,
+              "height": 1080
+            },
+            "exposure": {
+              "iso": 200,
+              "shutter": 0.004,
+              "aperture": 4
+            },
+            "enabled": true,
+            "focalLength": 24,
+            "sensorWidth": 36,
+            "transform": {
+              "position": [
+                3.2335783637895035,
+                1.3414080635282244,
+                1.3393920132778143
+              ],
+              "rotation": [
+                -14.300053,
+                66.85532,
+                13.191013
+              ],
+              "scale": [
+                1,
+                1,
+                1
+              ]
+            }
+          },
+          "local": {
+            "position": [
+              3.2335783637895035,
+              1.3414080635282244,
+              1.3393920132778143
+            ],
+            "rotation": [
+              -14.300053,
+              66.85532,
+              13.191013
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "kind": "camera",
+          "def": {
+            "name": "Cam_03",
+            "model": "PINHOLE",
+            "fov": 55,
+            "aspect": 1.7777777777777777,
+            "near": 0.1,
+            "far": 100,
+            "resolution": {
+              "width": 1920,
+              "height": 1080
+            },
+            "exposure": {
+              "iso": 200,
+              "shutter": 0.004,
+              "aperture": 4
+            },
+            "enabled": true,
+            "focalLength": 24,
+            "sensorWidth": 36,
+            "transform": {
+              "position": [
+                2.4748737341529163,
+                1.6696960066389073,
+                2.474873734152916
+              ],
+              "rotation": [
+                -15.141508,
+                43.987987,
+                10.643586
+              ],
+              "scale": [
+                1,
+                1,
+                1
+              ]
+            }
+          },
+          "local": {
+            "position": [
+              2.4748737341529163,
+              1.6696960066389073,
+              2.474873734152916
+            ],
+            "rotation": [
+              -15.141508,
+              43.987987,
+              10.643586
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "kind": "camera",
+          "def": {
+            "name": "Cam_04",
+            "model": "PINHOLE",
+            "fov": 55,
+            "aspect": 1.7777777777777777,
+            "near": 0.1,
+            "far": 100,
+            "resolution": {
+              "width": 1920,
+              "height": 1080
+            },
+            "exposure": {
+              "iso": 200,
+              "shutter": 0.004,
+              "aperture": 4
+            },
+            "enabled": true,
+            "focalLength": 24,
+            "sensorWidth": 36,
+            "transform": {
+              "position": [
+                1.3393920132778145,
+                1.9722479077843038,
+                3.2335783637895035
+              ],
+              "rotation": [
+                -16.734585,
+                21.636799,
+                6.32623
+              ],
+              "scale": [
+                1,
+                1,
+                1
+              ]
+            }
+          },
+          "local": {
+            "position": [
+              1.3393920132778145,
+              1.9722479077843038,
+              3.2335783637895035
+            ],
+            "rotation": [
+              -16.734585,
+              21.636799,
+              6.32623
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "kind": "camera",
+          "def": {
+            "name": "Cam_05",
+            "model": "PINHOLE",
+            "fov": 55,
+            "aspect": 1.7777777777777777,
+            "near": 0.1,
+            "far": 100,
+            "resolution": {
+              "width": 1920,
+              "height": 1080
+            },
+            "exposure": {
+              "iso": 200,
+              "shutter": 0.004,
+              "aperture": 4
+            },
+            "enabled": true,
+            "focalLength": 24,
+            "sensorWidth": 36,
+            "transform": {
+              "position": [
+                2.143131898507868e-16,
+                2.237436867076458,
+                3.5
+              ],
+              "rotation": [
+                -19.471221,
+                0,
+                0
+              ],
+              "scale": [
+                1,
+                1,
+                1
+              ]
+            }
+          },
+          "local": {
+            "position": [
+              2.143131898507868e-16,
+              2.237436867076458,
+              3.5
+            ],
+            "rotation": [
+              -19.471221,
+              0,
+              0
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "kind": "camera",
+          "def": {
+            "name": "Cam_06",
+            "model": "PINHOLE",
+            "fov": 55,
+            "aspect": 1.7777777777777777,
+            "near": 0.1,
+            "far": 100,
+            "resolution": {
+              "width": 1920,
+              "height": 1080
+            },
+            "exposure": {
+              "iso": 200,
+              "shutter": 0.004,
+              "aperture": 4
+            },
+            "enabled": true,
+            "focalLength": 24,
+            "sensorWidth": 36,
+            "transform": {
+              "position": [
+                -1.339392013277814,
+                2.4550718215294545,
+                3.2335783637895035
+              ],
+              "rotation": [
+                -24.227179,
+                -20.693152,
+                -9.034915
+              ],
+              "scale": [
+                1,
+                1,
+                1
+              ]
+            }
+          },
+          "local": {
+            "position": [
+              -1.339392013277814,
+              2.4550718215294545,
+              3.2335783637895035
+            ],
+            "rotation": [
+              -24.227179,
+              -20.693152,
+              -9.034915
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "kind": "camera",
+          "def": {
+            "name": "Cam_07",
+            "model": "PINHOLE",
+            "fov": 55,
+            "aspect": 1.7777777777777777,
+            "near": 0.1,
+            "far": 100,
+            "resolution": {
+              "width": 1920,
+              "height": 1080
+            },
+            "exposure": {
+              "iso": 200,
+              "shutter": 0.004,
+              "aperture": 4
+            },
+            "enabled": true,
+            "focalLength": 24,
+            "sensorWidth": 36,
+            "transform": {
+              "position": [
+                -2.474873734152916,
+                2.6167891818947515,
+                2.4748737341529163
+              ],
+              "rotation": [
+                -33.155842,
+                -39.935601,
+                -22.751154
+              ],
+              "scale": [
+                1,
+                1,
+                1
+              ]
+            }
+          },
+          "local": {
+            "position": [
+              -2.474873734152916,
+              2.6167891818947515,
+              2.4748737341529163
+            ],
+            "rotation": [
+              -33.155842,
+              -39.935601,
+              -22.751154
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "kind": "camera",
+          "def": {
+            "name": "Cam_08",
+            "model": "PINHOLE",
+            "fov": 55,
+            "aspect": 1.7777777777777777,
+            "near": 0.1,
+            "far": 100,
+            "resolution": {
+              "width": 1920,
+              "height": 1080
+            },
+            "exposure": {
+              "iso": 200,
+              "shutter": 0.004,
+              "aperture": 4
+            },
+            "enabled": true,
+            "focalLength": 24,
+            "sensorWidth": 36,
+            "transform": {
+              "position": [
+                -3.2335783637895035,
+                2.7163742407056533,
+                1.3393920132778145
+              ],
+              "rotation": [
+                -52.032901,
+                -56.048039,
+                -46.74854
+              ],
+              "scale": [
+                1,
+                1,
+                1
+              ]
+            }
+          },
+          "local": {
+            "position": [
+              -3.2335783637895035,
+              2.7163742407056533,
+              1.3393920132778145
+            ],
+            "rotation": [
+              -52.032901,
+              -56.048039,
+              -46.74854
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "kind": "camera",
+          "def": {
+            "name": "Cam_09",
+            "model": "PINHOLE",
+            "fov": 55,
+            "aspect": 1.7777777777777777,
+            "near": 0.1,
+            "far": 100,
+            "resolution": {
+              "width": 1920,
+              "height": 1080
+            },
+            "exposure": {
+              "iso": 200,
+              "shutter": 0.004,
+              "aperture": 4
+            },
+            "enabled": true,
+            "focalLength": 24,
+            "sensorWidth": 36,
+            "transform": {
+              "position": [
+                -3.5,
+                2.75,
+                4.286263797015736e-16
+              ],
+              "rotation": [
+                -90,
+                -63.434949,
+                -90
+              ],
+              "scale": [
+                1,
+                1,
+                1
+              ]
+            }
+          },
+          "local": {
+            "position": [
+              -3.5,
+              2.75,
+              4.286263797015736e-16
+            ],
+            "rotation": [
+              -90,
+              -63.434949,
+              -90
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "kind": "camera",
+          "def": {
+            "name": "Cam_10",
+            "model": "PINHOLE",
+            "fov": 55,
+            "aspect": 1.7777777777777777,
+            "near": 0.1,
+            "far": 100,
+            "resolution": {
+              "width": 1920,
+              "height": 1080
+            },
+            "exposure": {
+              "iso": 200,
+              "shutter": 0.004,
+              "aperture": 4
+            },
+            "enabled": true,
+            "focalLength": 24,
+            "sensorWidth": 36,
+            "transform": {
+              "position": [
+                -3.233578363789504,
+                2.7163742407056533,
+                -1.3393920132778139
+              ],
+              "rotation": [
+                -127.967099,
+                -56.048039,
+                -133.25146
+              ],
+              "scale": [
+                1,
+                1,
+                1
+              ]
+            }
+          },
+          "local": {
+            "position": [
+              -3.233578363789504,
+              2.7163742407056533,
+              -1.3393920132778139
+            ],
+            "rotation": [
+              -127.967099,
+              -56.048039,
+              -133.25146
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "kind": "camera",
+          "def": {
+            "name": "Cam_11",
+            "model": "PINHOLE",
+            "fov": 55,
+            "aspect": 1.7777777777777777,
+            "near": 0.1,
+            "far": 100,
+            "resolution": {
+              "width": 1920,
+              "height": 1080
+            },
+            "exposure": {
+              "iso": 200,
+              "shutter": 0.004,
+              "aperture": 4
+            },
+            "enabled": true,
+            "focalLength": 24,
+            "sensorWidth": 36,
+            "transform": {
+              "position": [
+                -2.474873734152917,
+                2.6167891818947515,
+                -2.474873734152916
+              ],
+              "rotation": [
+                -146.844158,
+                -39.935601,
+                -157.248846
+              ],
+              "scale": [
+                1,
+                1,
+                1
+              ]
+            }
+          },
+          "local": {
+            "position": [
+              -2.474873734152917,
+              2.6167891818947515,
+              -2.474873734152916
+            ],
+            "rotation": [
+              -146.844158,
+              -39.935601,
+              -157.248846
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "kind": "camera",
+          "def": {
+            "name": "Cam_12",
+            "model": "PINHOLE",
+            "fov": 55,
+            "aspect": 1.7777777777777777,
+            "near": 0.1,
+            "far": 100,
+            "resolution": {
+              "width": 1920,
+              "height": 1080
+            },
+            "exposure": {
+              "iso": 200,
+              "shutter": 0.004,
+              "aperture": 4
+            },
+            "enabled": true,
+            "focalLength": 24,
+            "sensorWidth": 36,
+            "transform": {
+              "position": [
+                -1.339392013277816,
+                2.4550718215294545,
+                -3.233578363789503
+              ],
+              "rotation": [
+                -155.772821,
+                -20.693152,
+                -170.965085
+              ],
+              "scale": [
+                1,
+                1,
+                1
+              ]
+            }
+          },
+          "local": {
+            "position": [
+              -1.339392013277816,
+              2.4550718215294545,
+              -3.233578363789503
+            ],
+            "rotation": [
+              -155.772821,
+              -20.693152,
+              -170.965085
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "kind": "camera",
+          "def": {
+            "name": "Cam_13",
+            "model": "PINHOLE",
+            "fov": 55,
+            "aspect": 1.7777777777777777,
+            "near": 0.1,
+            "far": 100,
+            "resolution": {
+              "width": 1920,
+              "height": 1080
+            },
+            "exposure": {
+              "iso": 200,
+              "shutter": 0.004,
+              "aperture": 4
+            },
+            "enabled": true,
+            "focalLength": 24,
+            "sensorWidth": 36,
+            "transform": {
+              "position": [
+                -6.429395695523604e-16,
+                2.2374368670764584,
+                -3.5
+              ],
+              "rotation": [
+                -160.528779,
+                0,
+                -180
+              ],
+              "scale": [
+                1,
+                1,
+                1
+              ]
+            }
+          },
+          "local": {
+            "position": [
+              -6.429395695523604e-16,
+              2.2374368670764584,
+              -3.5
+            ],
+            "rotation": [
+              -160.528779,
+              0,
+              -180
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "kind": "camera",
+          "def": {
+            "name": "Cam_14",
+            "model": "PINHOLE",
+            "fov": 55,
+            "aspect": 1.7777777777777777,
+            "near": 0.1,
+            "far": 100,
+            "resolution": {
+              "width": 1920,
+              "height": 1080
+            },
+            "exposure": {
+              "iso": 200,
+              "shutter": 0.004,
+              "aperture": 4
+            },
+            "enabled": true,
+            "focalLength": 24,
+            "sensorWidth": 36,
+            "transform": {
+              "position": [
+                1.339392013277815,
+                1.9722479077843038,
+                -3.233578363789503
+              ],
+              "rotation": [
+                -163.265415,
+                21.636799,
+                173.67377
+              ],
+              "scale": [
+                1,
+                1,
+                1
+              ]
+            }
+          },
+          "local": {
+            "position": [
+              1.339392013277815,
+              1.9722479077843038,
+              -3.233578363789503
+            ],
+            "rotation": [
+              -163.265415,
+              21.636799,
+              173.67377
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "kind": "camera",
+          "def": {
+            "name": "Cam_15",
+            "model": "PINHOLE",
+            "fov": 55,
+            "aspect": 1.7777777777777777,
+            "near": 0.1,
+            "far": 100,
+            "resolution": {
+              "width": 1920,
+              "height": 1080
+            },
+            "exposure": {
+              "iso": 200,
+              "shutter": 0.004,
+              "aperture": 4
+            },
+            "enabled": true,
+            "focalLength": 24,
+            "sensorWidth": 36,
+            "transform": {
+              "position": [
+                2.474873734152916,
+                1.6696960066389073,
+                -2.474873734152917
+              ],
+              "rotation": [
+                -164.858492,
+                43.987987,
+                169.356414
+              ],
+              "scale": [
+                1,
+                1,
+                1
+              ]
+            }
+          },
+          "local": {
+            "position": [
+              2.474873734152916,
+              1.6696960066389073,
+              -2.474873734152917
+            ],
+            "rotation": [
+              -164.858492,
+              43.987987,
+              169.356414
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        },
+        {
+          "kind": "camera",
+          "def": {
+            "name": "Cam_16",
+            "model": "PINHOLE",
+            "fov": 55,
+            "aspect": 1.7777777777777777,
+            "near": 0.1,
+            "far": 100,
+            "resolution": {
+              "width": 1920,
+              "height": 1080
+            },
+            "exposure": {
+              "iso": 200,
+              "shutter": 0.004,
+              "aperture": 4
+            },
+            "enabled": true,
+            "focalLength": 24,
+            "sensorWidth": 36,
+            "transform": {
+              "position": [
+                3.233578363789503,
+                1.341408063528225,
+                -1.3393920132778163
+              ],
+              "rotation": [
+                -165.699947,
+                66.85532,
+                166.808987
+              ],
+              "scale": [
+                1,
+                1,
+                1
+              ]
+            }
+          },
+          "local": {
+            "position": [
+              3.233578363789503,
+              1.341408063528225,
+              -1.3393920132778163
+            ],
+            "rotation": [
+              -165.699947,
+              66.85532,
+              166.808987
+            ],
+            "scale": [
+              1,
+              1,
+              1
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

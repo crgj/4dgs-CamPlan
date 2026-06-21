@@ -1,0 +1,27 @@
+{
+  "$schema": "./schema.json",
+  "name": "Planner 内置模型库",
+  "description": "随应用分发。人物/物体由 gen-library-presets.mjs 扫描 public/library/models 生成；组合(摄像机组等)为手写 preset-composite-*，脚本不覆盖。三大类：人物 / 物体 / 组合。",
+  "version": 1,
+  "categories": [
+    "人物",
+    "车辆",
+    "设备",
+    "摄像机组"
+  ],
+  "presets": [
+    "presets/preset-human-boxer.json",
+    "presets/preset-human-brooke.json",
+    "presets/preset-human-lucie.json",
+    "presets/preset-human-north.json",
+    "presets/preset-human-runner.json",
+    "presets/preset-object-aston-martin.json",
+    "presets/preset-object-cnc-meachine.json",
+    "presets/preset-object-jeep2007.json",
+    "presets/preset-object-jeep.json",
+    "presets/preset-composite-cam-hemisphere.json",
+    "presets/preset-composite-cam-linear.json",
+    "presets/preset-composite-cam-ring-360.json",
+    "presets/preset-composite-cam-ring-8.json"
+  ]
+}

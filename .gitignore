@@ -1,0 +1,28 @@
+# 依赖
+node_modules
+
+# 构建产物
+dist
+dist-ssr
+*.local
+
+# 测试覆盖率
+coverage
+
+# 编辑器/系统
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# 日志
+*.log
+npm-debug.log*
+
+# TypeScript 增量构建缓存
+*.tsbuildinfo
