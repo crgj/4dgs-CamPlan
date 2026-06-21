@@ -18,6 +18,7 @@ import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 import { USDLoader } from 'three/examples/jsm/loaders/USDLoader.js';
 import type { SubjectDef, Vec3 } from '@/types';
 import { usePlanner } from '@/state/store';
+import { publicUrl } from '@/lib/publicUrl';
 
 const ACCENT = '#0a8fef';
 const DIM = '#6a7a8a';
@@ -313,7 +314,7 @@ export function SubjectMesh({ subject, children, onClick }: { subject: SubjectDe
       )}
       {subject.geometry.type === 'mesh' && (
         <Suspense fallback={null}>
-          <MeshModel src={subject.geometry.src} animate={subject.geometry.animate} animationClip={subject.geometry.animationClip} bbox={subject.geometry.bbox} />
+          <MeshModel src={publicUrl(subject.geometry.src)} animate={subject.geometry.animate} animationClip={subject.geometry.animationClip} bbox={subject.geometry.bbox} />
         </Suspense>
       )}
       {selected && (

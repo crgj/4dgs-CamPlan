@@ -19,10 +19,7 @@
 import type { LibraryAsset } from './libraryAsset';
 import type { SubjectDef } from '@/types';
 import { listAssets, saveAsset } from './libraryAsset';
-
-// #WDD-gpt  2026-06-21 - public 资源要跟随 Vite base，GitHub Pages 项目页部署在子路径时不能硬编码根路径
-const publicUrl = (path: string): string =>
-  `${import.meta.env.BASE_URL}${path.replace(/^\/+/, '')}`;
+import { publicUrl } from './publicUrl';
 
 const normalizePublicAssetUrls = (asset: LibraryAsset): LibraryAsset => {
   const patchSubjectDef = (subject: Partial<SubjectDef>) => {

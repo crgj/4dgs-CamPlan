@@ -17,6 +17,7 @@
  */
 import * as THREE from 'three';
 import { USDLoader } from 'three/examples/jsm/loaders/USDLoader.js';
+import { publicUrl } from './publicUrl';
 
 const SIZE = 160; // 缩略图边长（px）
 
@@ -31,16 +32,17 @@ let chain: Promise<unknown> = Promise.resolve();
  * @returns dataURL（PNG）；失败或无 WebGL 返回 null。
  */
 export function renderUsdzThumbnail(src: string): Promise<string | null> {
+  const resolvedSrc = publicUrl(src);
   // 已缓存（含失败 null）直接返回
-  if (cache.has(src)) return Promise.resolve(cache.get(src) ?? null);
+  if (cache.has(resolvedSrc)) return Promise.resolve(cache.get(resolvedSrc) ?? null);
   // 入串行队列
-  const p = chain.then(() => renderOnce(src)).then(
+  const p = chain.then(() => renderOnce(resolvedSrc)).then(
     (url) => {
-      cache.set(src, url);
+      cache.set(resolvedSrc, url);
       return url;
     },
     () => {
-      cache.set(src, null);
+      cache.set(resolvedSrc, null);
       return null;
     },
   );
