@@ -26,6 +26,7 @@ import {
   clampPathTracingSettings,
   type RenderQuality,
 } from '@/scene/RenderQuality';
+import { requestPathTracingSnapshot } from '@/scene/pathtracing/pathTracingSnapshot';
 import { meterScene } from '@/sim/lightMeter';
 
 /** 折叠分区（UE5 Details 分组风格）。 */
@@ -198,6 +199,12 @@ export function RenderSettingsPanel() {
       </Section>
 
       <Section title={zh ? '路径追踪预览' : 'Path Traced Preview'} defaultOpen={false}>
+        <div className="px-3 py-1 text-[10px] leading-4 text-[var(--color-text-faint)]">
+          {/* #WDD-gpt  2026-06-21 - PT 目前仅保留设置入口，避免用户误以为开关会立即改变视口渲染 */}
+          {zh
+            ? '当前为占位功能：启用后仍使用标准视口渲染，真正路径追踪输出尚未接入。'
+            : 'Placeholder only: enabling this still uses the standard viewport renderer; path traced output is not wired yet.'}
+        </div>
         <Row label={zh ? '启用 PT' : 'Enable PT'}>
           <Check checked={rs.pathTracing} onChange={(v) => setRenderSettings({ pathTracing: v })} />
         </Row>
@@ -231,6 +238,18 @@ export function RenderSettingsPanel() {
               {zh
                 ? `当前质量上限：${profile.ptSamplesCap} 采样 / ${profile.ptBouncesCap} 反弹`
                 : `Cap at this quality: ${profile.ptSamplesCap} samples / ${profile.ptBouncesCap} bounces`}
+            </div>
+            <div className="flex gap-2 px-3 py-2">
+              <button
+                type="button"
+                onClick={() => requestPathTracingSnapshot({
+                  samples: rs.ptSamples,
+                  bounces: rs.ptBounces,
+                })}
+                className="rounded-[var(--radius-sm)] border border-[var(--color-panel-border)] bg-[var(--color-recessed)] px-3 py-1 text-[11px] text-[var(--color-text)] hover:bg-[var(--color-panel-raised)]"
+              >
+                {zh ? '生成 PT 快照 (PNG)' : 'Render PT Snapshot (PNG)'}
+              </button>
             </div>
           </>
         )}

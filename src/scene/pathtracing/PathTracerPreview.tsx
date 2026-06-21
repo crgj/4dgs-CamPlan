@@ -11,10 +11,30 @@
  */
 import { useEffect } from 'react';
 import { useThree } from '@react-three/fiber';
+import { WebGLPathTracer } from 'three-gpu-pathtracer';
 import { usePlanner } from '@/state/store';
+import {
+  type PathTracingSnapshotRequest,
+  subscribePathTracingSnapshot,
+} from './pathTracingSnapshot';
+
+function nextFrame(): Promise<void> {
+  return new Promise((resolve) => window.requestAnimationFrame(() => resolve()));
+}
+
+function downloadCanvas(canvas: HTMLCanvasElement, filename: string): void {
+  const url = canvas.toDataURL('image/png');
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
 
 export function PathTracerPreview() {
-  const invalidate = useThree((s) => s.invalidate);
+  const { camera, gl, invalidate, scene } = useThree();
+  const log = usePlanner((s) => s.log);
   // 读取设置确保组件订阅（未来集成用）
   const enabled = usePlanner((s) => s.renderSettings.pathTracing);
   const samples = usePlanner((s) => s.renderSettings.ptSamples);
@@ -25,6 +45,53 @@ export function PathTracerPreview() {
     // #WDD-gpt  2026-06-21 - PT 仍是占位实现；启用时只触发一次标准渲染刷新，不创建空 PT pass 覆盖画面
     invalidate();
   }, [bounces, enabled, invalidate, samples]);
+
+  useEffect(() => {
+    let busy = false;
+    let cancelled = false;
+
+    const handleSnapshot = async (detail: PathTracingSnapshotRequest) => {
+      if (busy) {
+        log('warn', 'PT snapshot is already rendering');
+        return;
+      }
+      busy = true;
+      const sampleCount = Math.max(1, Math.min(Math.floor(detail.samples), 64));
+      const bounceCount = Math.max(1, Math.min(Math.floor(detail.bounces), 8));
+      let pathTracer: WebGLPathTracer | null = null;
+      try {
+        log('info', `PT snapshot started: ${sampleCount} samples / ${bounceCount} bounces`);
+        // #WDD-gpt  2026-06-21 - 静态快照只渲染有限样本并下载 PNG，不把 PT 接入实时主循环
+        pathTracer = new WebGLPathTracer(gl);
+        pathTracer.bounces = bounceCount;
+        pathTracer.tiles.set(1, 1);
+        pathTracer.dynamicLowRes = false;
+        pathTracer.renderToCanvas = true;
+        pathTracer.setScene(scene, camera);
+        pathTracer.reset();
+
+        for (let i = 0; i < sampleCount && !cancelled; i++) {
+          pathTracer.renderSample();
+          await nextFrame();
+        }
+        if (cancelled) return;
+        downloadCanvas(gl.domElement, `camplan_pt_snapshot_${Date.now()}.png`);
+        log('info', `PT snapshot exported: ${sampleCount} samples`);
+      } catch (err) {
+        log('error', `PT snapshot failed: ${err instanceof Error ? err.message : String(err)}`);
+      } finally {
+        pathTracer?.dispose();
+        invalidate();
+        busy = false;
+      }
+    };
+
+    const unsubscribe = subscribePathTracingSnapshot(handleSnapshot);
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, [camera, gl, invalidate, log, scene]);
 
   if (!enabled) return null;
 
