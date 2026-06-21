@@ -34,7 +34,7 @@ export function NumberInput({
   min = -Infinity,
   max = Infinity,
   step = 0.05,
-  precision = 2,
+  precision = 3,
   axisColorClass,
   suffix,
   className = '',
@@ -55,11 +55,22 @@ export function NumberInput({
     return val.toFixed(precision);
   };
 
-  // 双击变编辑框
-  const handleDoubleClick = () => {
-    preEditValueRef.current = value; // 记录编辑前的原始值，供 Esc 还原
+  // 进入编辑模式（双击 / 键盘聚焦时触发）。记录编辑前值供 Esc 还原。
+  const enterEdit = () => {
+    preEditValueRef.current = value;
     setIsEditing(true);
     setInputValue(value.toString());
+  };
+
+  // 双击变编辑框
+  const handleDoubleClick = () => {
+    enterEdit();
+  };
+
+  // #WDD-gpt 2026-06-21 - 键盘聚焦（Tab 顺序）进入编辑模式：外层 div 设 tabIndex=0，
+  // 获得焦点时切到编辑态，输入框 autoFocus + select() 全选内容。Tab 顺序 = DOM 顺序 = UI 顺序。
+  const handleFocus = () => {
+    if (!isEditing) enterEdit();
   };
 
   // 处理文本框修改
@@ -82,6 +93,11 @@ export function NumberInput({
     setIsEditing(false);
   };
 
+  // 输入框获得焦点时全选内容（用户需求：focus 时全选）
+  const handleInputFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    e.target.select();
+  };
+
   // 键盘事件（Enter 确认，Esc 还原到编辑前的值）
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
@@ -91,6 +107,8 @@ export function NumberInput({
       // BUG-008：用编辑前的原始值还原，而非可能已被 handleTextChange 实时回写污染的 value prop。
       onChange(preEditValueRef.current, false);
     }
+    // Tab：交由浏览器默认行为（移到下一个 tabIndex），不做 preventDefault，
+    // 这样编辑态下按 Tab 会自然移到下一个 NumberInput（其外层 div 获焦 → 进编辑）。
   };
 
   // 鼠标按下，开始拖动 (Scrub)
@@ -153,9 +171,13 @@ export function NumberInput({
       className={`relative flex h-[var(--control-h)] items-center select-none rounded-[var(--radius-sm)] border border-[var(--color-panel-border)] bg-[var(--color-recessed)] text-[var(--text-base)] ${
         axisColorClass ? `pl-1.5 ${axisColorClass}` : 'px-1'
       } ${isDragging ? 'border-[var(--color-accent)]' : ''} ${className}`}
+      // #WDD-gpt 2026-06-21 - tabIndex 让 NumberInput 可被键盘 Tab 依次聚焦（顺序 = UI/DOM 顺序）
+      tabIndex={0}
       onMouseDown={handleMouseDown}
+      onFocus={handleFocus}
       style={{
         cursor: isEditing ? 'text' : 'col-resize',
+        outline: isEditing ? '1px solid var(--color-accent)' : undefined,
       }}
     >
       {/* 轴向标签 (X/Y/Z) */}
@@ -169,20 +191,22 @@ export function NumberInput({
       {isEditing ? (
         <input
           type="number"
-          className="w-full h-full bg-transparent text-[var(--color-text)] border-none outline-none focus:ring-0 p-0 text-left font-mono"
+          tabIndex={-1}
+          className="w-full h-full bg-transparent text-[var(--color-text)] border-none outline-none focus:ring-0 p-0 text-left font-mono text-[11px]"
           value={inputValue}
           onChange={handleTextChange}
+          onFocus={handleInputFocus}
           onBlur={handleConfirm}
           onKeyDown={handleKeyDown}
           autoFocus
         />
       ) : (
-        <div className="flex flex-1 items-center justify-between font-mono">
-          <span className={`text-[var(--color-text)] ${mixed ? 'opacity-50 italic' : ''}`}>
+        <div className="flex flex-1 items-center justify-between font-mono min-w-0">
+          <span className={`text-[var(--color-text)] truncate ${mixed ? 'opacity-50 italic' : ''}`}>
             {mixed ? '—' : getFormattedValue(value)}
           </span>
           {suffix && (
-            <span className="text-[var(--text-label)] text-[var(--color-text-faint)] select-none ml-1">
+            <span className="text-[var(--text-label)] text-[var(--color-text-faint)] select-none ml-1 shrink-0">
               {suffix}
             </span>
           )}

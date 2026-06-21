@@ -180,7 +180,7 @@ export function Preferences() {
             </span>
           </PrefRow>
 
-          {/* #WDD-gpt 2026-06-21 - 辅助圆环带半径（取代原 XY 标尺十字） */}
+          {/* #WDD-gpt 2026-06-21 - 辅助圆环带半径与宽度 */}
           <PrefRow label={locale === 'zh' ? '参考圆环半径 (米)' : 'Guide Ring Radius (m)'}>
             <NumberInput
               value={preferences.guideRingRadius}
@@ -189,6 +189,19 @@ export function Preferences() {
               min={0.25}
               max={20}
               step={0.25}
+              precision={2}
+              suffix="m"
+              className="flex-1"
+            />
+          </PrefRow>
+          <PrefRow label={locale === 'zh' ? '参考圆环宽度 (米)' : 'Guide Ring Tube (m)'}>
+            <NumberInput
+              value={preferences.guideRingTube}
+              onCommitHistory={() => undefined}
+              onChange={(v) => update({ guideRingTube: v })}
+              min={0.01}
+              max={1}
+              step={0.01}
               precision={2}
               suffix="m"
               className="flex-1"

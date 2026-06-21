@@ -226,7 +226,7 @@ export function Scene() {
       <Grid
         position={[0, scene.env.ground.y + 0.01, 0]}
         args={[20, 20]}
-        cellSize={Math.max(0.05, gridSectionSize / 4)}
+        cellSize={Math.max(0.05, gridSectionSize / 5)}
         cellThickness={0.7}
         cellColor={gridCellColor}
         sectionSize={gridSectionSize}
@@ -236,6 +236,7 @@ export function Scene() {
         fadeStrength={0.75}
         followCamera={false}
         infiniteGrid
+        side={THREE.DoubleSide}
       />
 
       {/* #WDD-gpt  2026-06-20 - 视角导航必须在后处理之后渲染，避免与 EffectComposer 默认 priority=1 互相覆盖导致消失 */}

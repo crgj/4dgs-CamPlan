@@ -12,7 +12,6 @@
  * 遵循现有 CoverageHeatmap/BoundsOverlay 模式：自读 store、关时返回 null、
  * 用 R3F 原语 + drei Line/Text/Billboard。数学复用 lib/aabb 的 aabbSize/aabbCenter。
  */
-import { useMemo } from 'react';
 import { Line, Text, Billboard } from '@react-three/drei';
 import { usePlanner } from '@/state/store';
 import { aabbCenter, aabbSize } from '@/lib/aabb';
@@ -20,12 +19,46 @@ import { aabbCenter, aabbSize } from '@/lib/aabb';
 const AXIS_LEN = 3;
 const COLORS = { x: '#c83838', y: '#4cae50', z: '#0a8fef' };
 
+/**
+ * 在地面 2m 格子点上显示压扁小圆球标记。
+ * 条件：X 或 Z 坐标是 2 的倍数。
+ * 范围：±8 米。
+ */
+function GridTickLabels({ groundY }: { groundY: number }) {
+  const RANGE = 8;
+  const STEP = 2;
+  const points: { x: number; z: number }[] = [];
+
+  for (let x = -RANGE; x <= RANGE; x += STEP) {
+    for (let z = -RANGE; z <= RANGE; z += STEP) {
+      if (x === 0 && z === 0) continue; // 原点不显示
+      const isXMultiple = x !== 0 && x % STEP === 0;
+      const isZMultiple = z !== 0 && z % STEP === 0;
+      if (isXMultiple || isZMultiple) {
+        points.push({ x, z });
+      }
+    }
+  }
+
+  return (
+    <group>
+      {points.map((p) => (
+        <mesh key={`${p.x}-${p.z}`} position={[p.x, groundY + 0.005, p.z]} scale={[1, 0.01, 1]}>
+          <sphereGeometry args={[0.04, 8, 8]} />
+          <meshBasicMaterial color="#a0a0a0" transparent opacity={0.7} depthWrite={false} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
 export function GuidesOverlay() {
   const show = usePlanner((s) => s.view.showGuides);
   const groundY = usePlanner((s) => s.scene.env.ground.y);
   const scene = usePlanner((s) => s.scene);
   const selection = usePlanner((s) => s.selection);
   const ringRadius = usePlanner((s) => s.preferences.guideRingRadius);
+  const ringTube = usePlanner((s) => s.preferences.guideRingTube);
   const ringColor = usePlanner((s) => s.preferences.gridSectionColor);
 
   if (!show) return null;
@@ -43,9 +76,13 @@ export function GuidesOverlay() {
       <Line points={[[0, 0, 0], [0, AXIS_LEN, 0]]} color={COLORS.y} lineWidth={2} />
       <Line points={[[0, 0, 0], [0, 0, AXIS_LEN]]} color={COLORS.z} lineWidth={2} />
 
+      {/* 地面 2m 格子点位置标注（X 或 Z 为 2 的倍数） */}
+      <GridTickLabels groundY={groundY} />
+
       {/* ② 地面参考圆环带 */}
       <GuideRing
         radius={Math.max(0.05, ringRadius)}
+        tube={Math.max(0.01, ringTube)}
         groundY={groundY}
         color={ringColor}
       />
@@ -63,34 +100,30 @@ export function GuidesOverlay() {
 
 /**
  * 地面原点处的参考圆环带。
- * 用多段折线近似一个圆（drei <Line>），并标注半径。半径可由 preferences.guideRingRadius 设置。
+ * 用 TorusGeometry 绘制实心圆环带，半径与宽度均可设。
  */
 function GuideRing({
   radius,
+  tube,
   groundY,
   color,
 }: {
   radius: number;
+  tube: number;
   groundY: number;
   color: string;
 }) {
-  // 圆环略高于地面避免 z-fight
-  const y = groundY + 0.035;
-  const SEG = 96;
-  const points = useMemo(() => {
-    const pts: [number, number, number][] = [];
-    for (let i = 0; i <= SEG; i++) {
-      const a = (i / SEG) * Math.PI * 2;
-      pts.push([Math.cos(a) * radius, y, Math.sin(a) * radius]);
-    }
-    return pts;
-  }, [radius, y]);
+  // 圆环中心略高于地面，Y 方向压扁为 0.01（扁平圆环带）
+  const y = groundY + 0.005;
 
   return (
     <group>
-      <Line points={points} color={color} lineWidth={1.6} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, y, 0]} scale={[1, 1, 0.01]}>
+        <torusGeometry args={[radius, tube, 16, 96]} />
+        <meshBasicMaterial color={color} transparent opacity={0.6} depthWrite={false} />
+      </mesh>
       {/* 半径标注（朝向相机的 Billboard，放在 +X 侧） */}
-      <Billboard position={[radius + 0.15, groundY + 0.1, 0]}>
+      <Billboard position={[radius + tube + 0.15, groundY + 0.1, 0]}>
         <Text
           fontSize={0.1}
           color="#ffffff"

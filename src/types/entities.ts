@@ -120,7 +120,8 @@ export type SubjectGeometry =
   // 单位米），用于覆盖度/采样计算——OBJ 原始坐标（如厘米级）与缩放后视觉尺寸不一致，
   // 必须显式声明。省略时回退 1m 立方体占位（仅供低保真预览，覆盖计算会不准）。
   // animate：USD 等带骨骼动画的模型，true 时用 AnimationMixer 循环播放首个 clip。
-  | { type: 'mesh'; src: string; bbox?: Vec3; animate?: boolean };
+  // animationClip：当前播放的动画 clip 名称；undefined 时播放首个 clip。
+  | { type: 'mesh'; src: string; bbox?: Vec3; animate?: boolean; animationClip?: string };
 
 /**
  * 被拍摄主体（SubjectDef）。

@@ -19,6 +19,8 @@ export function Outline() {
     scene,
     selection,
     select,
+    selectRange,
+    selectSubtree,
     removeEntity,
     renameEntity,
     updateCamera,
@@ -215,7 +217,13 @@ export function Outline() {
           e.stopPropagation();
           setContextMenu({ x: e.clientX, y: e.clientY, id: entity.id });
         }}
-        onClick={(e) => select(entity.id, e.ctrlKey || e.metaKey)}
+        onClick={(e) => {
+          // #WDD-gpt 2026-06-21 - Shift 范围多选 / Ctrl+Cmd 切换 / 普通单击
+          // 组合（父物体）普通单击 = 选中它及其全部子代（选父=选整组）；Ctrl+click 仅切换自身。
+          if (e.shiftKey) selectRange(entity.id);
+          else if (entity.kind === 'group' && !e.ctrlKey && !e.metaKey) selectSubtree(entity.id);
+          else select(entity.id, e.ctrlKey || e.metaKey);
+        }}
         onDoubleClick={() => handleDoubleClick(entity)}
         className={`group relative flex h-[var(--row-h)] items-center gap-2 pr-3 text-[var(--text-base)] cursor-pointer transition-colors hover:bg-[var(--color-panel-raised)] ${
           isSelected
@@ -323,7 +331,13 @@ export function Outline() {
     return (
       <div
         key={entity.id}
-        onClick={(e) => select(entity.id, e.ctrlKey || e.metaKey)}
+        onClick={(e) => {
+          // #WDD-gpt 2026-06-21 - Shift 范围多选 / Ctrl+Cmd 切换 / 普通单击
+          // 组合（父物体）普通单击 = 选中它及其全部子代（选父=选整组）；Ctrl+click 仅切换自身。
+          if (e.shiftKey) selectRange(entity.id);
+          else if (entity.kind === 'group' && !e.ctrlKey && !e.metaKey) selectSubtree(entity.id);
+          else select(entity.id, e.ctrlKey || e.metaKey);
+        }}
         onDoubleClick={() => handleDoubleClick(entity)}
         className={`group relative flex h-[var(--row-h)] items-center gap-2 px-3 pr-3 text-[var(--text-base)] cursor-pointer transition-colors hover:bg-[var(--color-panel-raised)] ${
           isSelected

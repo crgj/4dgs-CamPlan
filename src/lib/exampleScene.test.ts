@@ -4,11 +4,11 @@ import { buildExampleScene } from './exampleScene';
 import { validateScene, serializeScene, deserializeScene } from '@/io/serialize';
 
 describe('buildExampleScene', () => {
-  it('默认生成 8 台相机 + 2 灯光 + 2 主体', () => {
+  it('默认生成 8 台相机 + 2 灯光 + 1 主体（人物模型）', () => {
     const s = buildExampleScene();
     expect(s.cameras).toHaveLength(8);
     expect(s.lights).toHaveLength(2);
-    expect(s.subjects).toHaveLength(2);
+    expect(s.subjects).toHaveLength(1);
   });
 
   it('相机环形分布：等角、半径一致、看向原点附近', () => {
@@ -29,9 +29,9 @@ describe('buildExampleScene', () => {
 
   it('主体 bounds 非空且与几何尺寸匹配', () => {
     const s = buildExampleScene();
-    const hero = s.subjects.find((m) => m.id === 'subj_hero')!;
-    const sizeY = hero.bounds.max[1] - hero.bounds.min[1];
-    expect(sizeY).toBeCloseTo(2, 5);
+    const human = s.subjects.find((m) => m.id === 'subj_human_1')!;
+    const sizeY = human.bounds.max[1] - human.bounds.min[1];
+    expect(sizeY).toBeCloseTo(1.7, 5);
   });
 
   it('通过 validateScene 结构校验', () => {
@@ -43,6 +43,6 @@ describe('buildExampleScene', () => {
     const s = buildExampleScene();
     const restored = deserializeScene(serializeScene(s));
     expect(restored.cameras).toHaveLength(8);
-    expect(restored.subjects).toHaveLength(2);
+    expect(restored.subjects).toHaveLength(1);
   });
 });

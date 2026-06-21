@@ -24,6 +24,9 @@ export function WorldSettings() {
   const setActiveOverlay = usePlanner((s) => s.setActiveOverlay);
   const scene = usePlanner((s) => s.scene);
   const commitHistory = usePlanner((s) => s.commitHistory);
+  // #WDD-gpt 2026-06-21 - 视锥可视化长度（编辑器偏好，已随 setPreferences 持久化）
+  const frustumDrawDistance = usePlanner((s) => s.preferences.frustumDrawDistance);
+  const setPreferences = usePlanner((s) => s.setPreferences);
 
   return (
     <div
@@ -113,6 +116,27 @@ export function WorldSettings() {
               className="flex-1"
             />
           </WsRow>
+
+          {/* #WDD-gpt 2026-06-21 - 视口可视化设置：视锥绘制远端长度 */}
+          <SectionTitle>{locale === 'zh' ? '视口可视化' : 'Viewport Visualization'}</SectionTitle>
+          <WsRow label={locale === 'zh' ? '视锥绘制长度 (米)' : 'Frustum Draw Distance (m)'}>
+            <NumberInput
+              value={frustumDrawDistance}
+              onCommitHistory={commitHistory}
+              onChange={(v) => setPreferences({ frustumDrawDistance: Math.max(0.5, v) })}
+              min={0.5}
+              max={100}
+              step={0.5}
+              precision={2}
+              suffix="m"
+              className="flex-1"
+            />
+          </WsRow>
+          <div className="px-3 pb-1 text-[10px] leading-relaxed text-[var(--color-text-dim)]">
+            {locale === 'zh'
+              ? '相机视锥线框的远端距离，独立于相机真实裁剪远平面（避免画出超长锥）。'
+              : 'Visual far-end length of camera frustum wireframes, independent of the real far clip plane.'}
+          </div>
 
           <SectionTitle>{locale === 'zh' ? '场景单位与坐标系' : 'Units & Coordinate System'}</SectionTitle>
           <div className="px-3 py-2 text-[11px] leading-relaxed text-[var(--color-text-dim)]">

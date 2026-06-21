@@ -14,13 +14,11 @@ const TAU = Math.PI * 2;
 /**
  * 构造环形相机阵列（N 台等角分布、俯角约 22.6°、半径 6m，看向中心主体）。
  *
- * #WDD-gpt 2026-06-20 - 相机朝向改用 lookAtRotation（基于旋转矩阵反解 XYZ 欧拉角），
- * 此前手写 [pitch, -angleDeg+180, 0] 偏 90°，相机实际朝外不朝中心。
+ * #WDD-gpt 2026-06-21 - 默认场景改为空场景（无 box），并插入库中第一个人物模型（泰拳女拳手 Boxer）到原点。
  */
 export function buildExampleScene(camCount = 8): SceneDef {
   const radius = 6;
   const height = 3.5;
-  // 雕塑中心（Hero Sculpture bounds 中心），相机看向它而非几何原点
   const target: Vec3 = [0, 1, 0];
 
   const cameras: CameraDef[] = [];
@@ -49,25 +47,19 @@ export function buildExampleScene(camCount = 8): SceneDef {
     });
   }
 
-  const sculpture: SubjectDef = {
-    id: 'subj_hero',
+  const human: SubjectDef = {
+    id: 'subj_human_1',
     kind: 'subject',
-    name: 'Hero Sculpture',
-    transform: { position: [0, 1, 0], rotation: [0, 0, 0], scale: [1, 1, 1] },
-    geometry: { type: 'box', size: [2, 2, 2] },
-    bounds: { min: [-1, 0, -1], max: [1, 2, 1] },
-    sampleDensity: 10,
-    enabled: true,
-  };
-
-  const pedestal: SubjectDef = {
-    id: 'subj_pedestal',
-    kind: 'subject',
-    name: 'Pedestal',
-    transform: { position: [0, -0.5, 0], rotation: [0, 0, 0], scale: [1, 1, 1] },
-    geometry: { type: 'box', size: [1.5, 1, 1.5] },
-    bounds: { min: [-0.75, -1, -0.75], max: [0.75, 0, 0.75] },
-    sampleDensity: 10,
+    name: '泰拳女拳手 Boxer',
+    transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] },
+    geometry: {
+      type: 'mesh',
+      src: '/library/models/Human/Boxer/Female_Muay_Thai_Boxer.usdz',
+      bbox: [0.5, 1.7, 0.3],
+      animate: true,
+    },
+    bounds: { min: [-0.25, 0, -0.15], max: [0.25, 1.7, 0.15] },
+    sampleDensity: 50,
     enabled: true,
   };
 
@@ -82,7 +74,6 @@ export function buildExampleScene(camCount = 8): SceneDef {
     enabled: true,
   };
 
-  // 补光用 point（半球补光的近似）
   const fill: LightDef = {
     id: 'light_fill',
     kind: 'light',
@@ -94,15 +85,13 @@ export function buildExampleScene(camCount = 8): SceneDef {
     enabled: true,
   };
 
-  // 校验 bounds（确保 aabb 与 transform 一致）
-  sculpture.bounds = aabbOfSubject(sculpture);
-  pedestal.bounds = aabbOfSubject(pedestal);
+  human.bounds = aabbOfSubject(human);
 
   return {
     version: SCHEMA_VERSION,
     cameras,
     lights: [sun, fill],
-    subjects: [sculpture, pedestal],
+    subjects: [human],
     env: defaultEnv(),
   };
 }

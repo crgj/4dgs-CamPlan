@@ -15,6 +15,8 @@ const DIM = '#6a8aa8';
 export function CameraRig({ cam, children, onClick }: { cam: CameraDef; children?: ReactNode; onClick?: (e: ThreeEvent<MouseEvent>) => void }) {
   const selected = usePlanner((s) => s.selection.includes(cam.id));
   const showFrustums = usePlanner((s) => s.view.showFrustums);
+  // #WDD-gpt 2026-06-21 - 选中摄像机时始终显示其视锥，不受全局 showFrustums 开关影响
+  const showThisFrustum = selected || showFrustums;
   // #WDD-gpt 2026-06-21 - 视口中显示摄像机名字 + 视场角
   const showGuides = usePlanner((s) => s.view.showGuides);
   // #WDD-gpt 2026-06-21 - 视锥绘制远端：用全局 frustumDrawDistance 限制视觉长度，
@@ -88,7 +90,7 @@ export function CameraRig({ cam, children, onClick }: { cam: CameraDef; children
         </Billboard>
       )}
 
-      {showFrustums && (
+      {showThisFrustum && (
         <lineSegments
           geometry={lineGeom}
           raycast={() => {

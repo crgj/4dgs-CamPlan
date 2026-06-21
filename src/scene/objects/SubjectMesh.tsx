@@ -132,7 +132,7 @@ function ObjSubjectModel({ src }: { src: string }) {
  *   - 模型最低点对齐到局部 Y=0
  * 这样拖到地面时不会因为原始坐标过大/偏移而看不到。
  */
-function UsdSubjectModel({ src, animate, bbox }: { src: string; animate?: boolean; bbox?: Vec3 }) {
+function UsdSubjectModel({ src, animate, animationClip, bbox }: { src: string; animate?: boolean; animationClip?: string; bbox?: Vec3 }) {
   const invalidate = useThree((s) => s.invalidate);
   // 只缓存原始字节（跨实例共享，避免重复网络下载）；ArrayBuffer 本身不含 Three 对象、可安全共享。
   // 必须设 responseType=arraybuffer，否则 FileLoader 默认返回文本，USDLoader.parse 会失败。
@@ -141,8 +141,38 @@ function UsdSubjectModel({ src, animate, bbox }: { src: string; animate?: boolea
   }) as unknown as ArrayBuffer;
 
   // 每个实例独立解析出一份全新的 Group（不共享 Object3D，不 clone）。
+  // #WDD-gpt 2026-06-21 - 修复 USDZ SkinnedMesh 动画不播放：USDLoader 输出的 bone
+  // 被嵌套在 SkinnedMesh 内部作为 child，而 AnimationMixer 要求 bone 是场景图独立节点。
+  // 这里把 bone 从 SkinnedMesh 中解绑，挂到 bone 的原始父级（_rootJoint 或 skin0），
+  // 让 mixer 能正确遍历和更新 bone transform。
   const object = useMemo(() => {
     const parsed = new USDLoader().parse(buffer);
+    parsed.updateMatrixWorld(true);
+
+    // 收集所有 SkinnedMesh 及其 skeleton
+    const skinnedMeshes: THREE.SkinnedMesh[] = [];
+    parsed.traverse((child) => {
+      if (child.type === 'SkinnedMesh') {
+        skinnedMeshes.push(child as THREE.SkinnedMesh);
+      }
+    });
+
+    for (const sm of skinnedMeshes) {
+      if (!sm.skeleton) continue;
+      const rootBone = sm.skeleton.bones[0];
+      if (!rootBone) continue;
+      // 如果 rootBone 的 parent 是 SkinnedMesh，需要把它移到 SkinnedMesh 的 parent 下
+      if (rootBone.parent === sm) {
+        const boneParent = sm.parent;
+        if (boneParent) {
+          // 从 SkinnedMesh 中移除
+          sm.remove(rootBone);
+          // 挂到 SkinnedMesh 的 parent 下，保持世界 transform
+          boneParent.add(rootBone);
+        }
+      }
+    }
+
     parsed.updateMatrixWorld(true);
     return parsed;
   }, [buffer]);
@@ -190,17 +220,36 @@ function UsdSubjectModel({ src, animate, bbox }: { src: string; animate?: boolea
   }, [object, invalidate]);
 
   // 动画：USDLoader 把 clips 放在 object.animations。对**本实例**对象建 mixer 独立播放。
+  // #WDD-gpt 2026-06-21 - 支持多 clip 切换：根据 animationClip prop 选择对应 clip。
   const mixer = useMemo(() => {
     const clips = (object as THREE.Object3D & { animations?: THREE.AnimationClip[] }).animations;
     if (!animate || !clips || clips.length === 0) return null;
     const m = new THREE.AnimationMixer(object);
-    const action = m.clipAction(clips[0]);
+    return m;
+  }, [object, animate]);
+
+  // 根据 animationClip 切换当前播放的 clip
+  useEffect(() => {
+    if (!mixer) return;
+    const clips = (object as THREE.Object3D & { animations?: THREE.AnimationClip[] }).animations;
+    if (!clips || clips.length === 0) return;
+
+    // 停掉所有当前播放的 action
+    mixer.stopAllAction();
+
+    // 选择 clip：优先 animationClip 匹配，否则首个
+    let targetClip = clips[0];
+    if (animationClip) {
+      const matched = clips.find((c) => c.name === animationClip);
+      if (matched) targetClip = matched;
+    }
+
+    const action = mixer.clipAction(targetClip);
     action.reset();
     action.setLoop(THREE.LoopRepeat, Infinity);
     action.clampWhenFinished = false;
     action.play();
-    return m;
-  }, [object, animate]);
+  }, [mixer, object, animationClip]);
 
   useEffect(() => {
     // 组件卸载时停掉 mixer，避免动画继续驱动已卸载对象（多实例时关键）
@@ -221,10 +270,10 @@ function UsdSubjectModel({ src, animate, bbox }: { src: string; animate?: boolea
 }
 
 /** 按扩展名选择模型加载器：.usdz/.usda/.usdc → USDLoader；.obj → OBJ+MTL 自定义。 */
-function MeshModel({ src, animate, bbox }: { src: string; animate?: boolean; bbox?: Vec3 }) {
+function MeshModel({ src, animate, animationClip, bbox }: { src: string; animate?: boolean; animationClip?: string; bbox?: Vec3 }) {
   const ext = src.slice(src.lastIndexOf('.') + 1).toLowerCase();
   if (ext === 'usdz' || ext === 'usda' || ext === 'usdc') {
-    return <UsdSubjectModel src={src} animate={animate} bbox={bbox} />;
+    return <UsdSubjectModel src={src} animate={animate} animationClip={animationClip} bbox={bbox} />;
   }
   return <ObjSubjectModel src={src} />;
 }
@@ -264,7 +313,7 @@ export function SubjectMesh({ subject, children, onClick }: { subject: SubjectDe
       )}
       {subject.geometry.type === 'mesh' && (
         <Suspense fallback={null}>
-          <MeshModel src={subject.geometry.src} animate={subject.geometry.animate} bbox={subject.geometry.bbox} />
+          <MeshModel src={subject.geometry.src} animate={subject.geometry.animate} animationClip={subject.geometry.animationClip} bbox={subject.geometry.bbox} />
         </Suspense>
       )}
       {selected && (

@@ -153,19 +153,37 @@ async function renderOnce(src: string): Promise<string | null> {
     applyUnlitMaterial(group);
     scene.add(group);
 
-    // 自动相机：算包围盒，定位到 3/4 视角框住模型
-    const box = new THREE.Box3().setFromObject(group);
-    const center = box.getCenter(new THREE.Vector3());
-    const size = box.getSize(new THREE.Vector3());
-    const maxDim = Math.max(size.x, size.y, size.z, 0.0001);
-    const dist = maxDim * 2.2; // 留白
-    const camera = new THREE.PerspectiveCamera(35, 1, maxDim * 0.01, dist * 10);
+    // 自动相机：算包围盒，确保缩略图包含整个模型
+    // #WDD-gpt 2026-06-21 - 精确计算 AABB：显式遍历所有 mesh 的 world-space boundingBox 来累加，
+    // 避免 SkinnedMesh 的 boundingSphere 不准确导致模型被裁剪。
+    const preciseBox = new THREE.Box3();
+    group.traverse((child) => {
+      if (child instanceof THREE.Mesh && child.geometry) {
+        if (!child.geometry.boundingBox) {
+          child.geometry.computeBoundingBox();
+        }
+        if (child.geometry.boundingBox) {
+          // expandByObject 会自动应用 mesh 的 world matrix，得到 world-space AABB
+          preciseBox.expandByObject(child);
+        }
+      }
+    });
+    // 如果遍历失败（如没有任何 mesh 有 boundingBox），回退到 setFromObject
+    const finalBox = preciseBox.isEmpty() ? new THREE.Box3().setFromObject(group) : preciseBox;
+    const center = finalBox.getCenter(new THREE.Vector3());
+
+    // 计算包围球半径，确保相机距离能框住整个模型（最保守的估算）
+    const sphere = finalBox.getBoundingSphere(new THREE.Sphere());
+    const fov = 35;
+    const fovRad = (fov * Math.PI) / 180;
+    const tanHalfFov = Math.tan(fovRad / 2);
+    // 相机距离 = 包围球半径 / tan(fov/2) * 边距系数
+    // 1.4 倍边距：确保模型完整入框，不留白边但也不截断
+    const dist = (sphere.radius / tanHalfFov) * 1.4;
+    const camera = new THREE.PerspectiveCamera(fov, 1, dist * 0.01, dist * 10);
     // 3/4 俯视角度（从前右上方看）
-    camera.position.set(
-      center.x + dist * 0.6,
-      center.y + dist * 0.45,
-      center.z + dist * 0.6,
-    );
+    const dir = new THREE.Vector3(0.6, 0.45, 0.6).normalize();
+    camera.position.copy(center).sub(dir.clone().multiplyScalar(dist));
     camera.lookAt(center);
 
     renderer.render(scene, camera);

@@ -92,11 +92,11 @@ function CategoryHeader({
 // 属性行 Container 组件
 function PropertyRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center min-h-[var(--row-h)] px-2 py-0.5 text-[var(--text-base)]">
-      <span className="w-24 shrink-0 text-[var(--color-text-dim)] text-[var(--text-label)] truncate" title={label}>
+    <div className="flex items-center min-h-[var(--row-h)] px-2 py-0.5 text-[11px] min-w-0">
+      <span className="w-20 shrink-0 text-[var(--color-text-dim)] text-[var(--text-label)] truncate" title={label}>
         {label}
       </span>
-      <div className="flex-1 flex min-w-0 items-center">{children}</div>
+      <div className="flex-1 flex min-w-0 items-center overflow-hidden">{children}</div>
     </div>
   );
 }
@@ -136,12 +136,41 @@ export function Inspector() {
     }
   };
 
+  // #WDD-gpt 2026-06-21 - 批量按类型写入：把 patch 应用到所有同类型选中实体。
+  const updateCamerasAll = (patch: Partial<CameraDef>, withHistory?: boolean) => {
+    for (const e of selectedEntities) if (e.kind === 'camera') updateCamera(e.id, patch, withHistory);
+  };
+  const updateLightsAll = (patch: Partial<LightDef>, withHistory?: boolean) => {
+    for (const e of selectedEntities) if (e.kind === 'light') updateLight(e.id, patch, withHistory);
+  };
+  const updateSubjectsAll = (patch: Partial<SubjectDef>, withHistory?: boolean) => {
+    for (const e of selectedEntities) if (e.kind === 'subject') updateSubject(e.id, patch, withHistory);
+  };
+
+  // #WDD-gpt 2026-06-21 - Mixed 值辅助：返回选中实体在某 getter 上是否不一致。
+  const mixedOf = <T,>(getter: (e: AnyEntity) => T): boolean =>
+    !selectedEntities.every((e) => getter(e) === getter(selectedEntities[0]));
+  const firstVal = <T,>(getter: (e: AnyEntity) => T): T => getter(selectedEntities[0]);
+
   // 多选 Position 批量编辑：值统一时显示实际值，不一致显示 mixed。
   const mixedPosition: [boolean, boolean, boolean] = [
-    !selectedEntities.every((e) => e.transform.position[0] === selectedEntities[0].transform.position[0]),
-    !selectedEntities.every((e) => e.transform.position[1] === selectedEntities[0].transform.position[1]),
-    !selectedEntities.every((e) => e.transform.position[2] === selectedEntities[0].transform.position[2]),
+    mixedOf((e) => e.transform.position[0]),
+    mixedOf((e) => e.transform.position[1]),
+    mixedOf((e) => e.transform.position[2]),
   ];
+  const mixedRotation: [boolean, boolean, boolean] = [
+    mixedOf((e) => e.transform.rotation[0]),
+    mixedOf((e) => e.transform.rotation[1]),
+    mixedOf((e) => e.transform.rotation[2]),
+  ];
+  const hasScale = selectedEntities.every((e) => e.transform.scale);
+  const mixedScale: [boolean, boolean, boolean] = hasScale
+    ? [
+        mixedOf((e) => e.transform.scale![0]),
+        mixedOf((e) => e.transform.scale![1]),
+        mixedOf((e) => e.transform.scale![2]),
+      ]
+    : [true, true, true];
 
   // 多选批量编辑面板
   const renderMultiSelectGroup = () => {
@@ -155,6 +184,34 @@ export function Inspector() {
             {multiSelectKind ?? 'mixed'}
           </span>
         </div>
+
+        {/* 名称（所有类型共享） */}
+        <div className="border-b border-[var(--color-panel-border)] px-3 py-2">
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] uppercase tracking-wide text-[var(--color-text-faint)]">
+              {locale === 'zh' ? '名称 (Name)' : 'Name'}
+            </span>
+            <input
+              type="text"
+              value={selectedEntities[0].name}
+              placeholder={mixedOf((e) => e.name) ? '—' : undefined}
+              onChange={(e) => {
+                const name = e.target.value;
+                updateCamerasAll({ name }, false);
+                updateLightsAll({ name }, false);
+                updateSubjectsAll({ name }, false);
+                // 组合也改名（逐个）
+                for (const g of selectedEntities) {
+                  if (g.kind === 'group') updateGroup(g.id, { name }, false);
+                }
+              }}
+              onBlur={commitHistory}
+              className="h-[var(--control-h)] w-full rounded-[var(--radius-sm)] border border-[var(--color-panel-border)] bg-[var(--color-recessed)] px-2 text-[var(--color-text)] outline-none focus:border-[var(--color-accent)]"
+            />
+          </div>
+        </div>
+
+        {/* 变换（位置/旋转/缩放）—— 所有类型共享 */}
         <div className="border-b border-[var(--color-panel-border)]">
           <CategoryHeader
             title={t('transform')}
@@ -172,7 +229,7 @@ export function Inspector() {
                       label={['X', 'Y', 'Z'][axis]}
                       axisColorClass={`border-l-2 border-[var(--color-axis-${['x', 'y', 'z'][axis]})]`}
                       mixed={mixedPosition[axis]}
-                      value={selectedEntities[0].transform.position[axis]}
+                      value={firstVal((e) => e.transform.position[axis])}
                       onCommitHistory={commitHistory}
                       onChange={(v, hist) => {
                         const base = selectedEntities[0].transform.position;
@@ -185,6 +242,52 @@ export function Inspector() {
                   ))}
                 </div>
               </PropertyRow>
+              <PropertyRow label={t('rotation')}>
+                <div className="flex-1 grid grid-cols-3 gap-1">
+                  {([0, 1, 2] as const).map((axis) => (
+                    <NumberInput
+                      key={axis}
+                      label={['X', 'Y', 'Z'][axis]}
+                      axisColorClass={`border-l-2 border-[var(--color-axis-${['x', 'y', 'z'][axis]})]`}
+                      mixed={mixedRotation[axis]}
+                      value={firstVal((e) => e.transform.rotation[axis])}
+                      onCommitHistory={commitHistory}
+                      onChange={(v, hist) => {
+                        const base = selectedEntities[0].transform.rotation;
+                        const next: [number, number, number] = [base[0], base[1], base[2]];
+                        next[axis] = v;
+                        updateTransformAll({ ...selectedEntities[0].transform, rotation: next }, hist);
+                      }}
+                      suffix="°"
+                    />
+                  ))}
+                </div>
+              </PropertyRow>
+              {hasScale && (
+                <PropertyRow label={t('scale')}>
+                  <div className="flex-1 grid grid-cols-3 gap-1">
+                    {([0, 1, 2] as const).map((axis) => (
+                      <NumberInput
+                        key={axis}
+                        label={['X', 'Y', 'Z'][axis]}
+                        axisColorClass={`border-l-2 border-[var(--color-axis-${['x', 'y', 'z'][axis]})]`}
+                        mixed={mixedScale[axis]}
+                        value={firstVal((e) => e.transform.scale![axis])}
+                        onCommitHistory={commitHistory}
+                        onChange={(v, hist) => {
+                          const base = selectedEntities[0].transform.scale!;
+                          const next: [number, number, number] = [base[0], base[1], base[2]];
+                          next[axis] = v;
+                          updateTransformAll(
+                            { ...selectedEntities[0].transform, scale: next },
+                            hist,
+                          );
+                        }}
+                      />
+                    ))}
+                  </div>
+                </PropertyRow>
+              )}
               <div className="px-2 py-1 text-[10px] text-[var(--color-text-faint)]">
                 {locale === 'zh'
                   ? '数值变更将应用到全部选中对象（混合值显示 “—”）。'
@@ -193,9 +296,180 @@ export function Inspector() {
             </div>
           )}
         </div>
+
+        {/* 启用（所有类型共享） */}
+        <div className="border-b border-[var(--color-panel-border)] px-3 py-2">
+          <PropertyRow label="Enabled">
+            <input
+              type="checkbox"
+              className="rounded-sm bg-[var(--color-recessed)] border border-[var(--color-panel-border)] text-[var(--color-accent)] focus:ring-0 focus:outline-none cursor-pointer"
+              checked={selectedEntities.every((e) => e.enabled)}
+              ref={(el) => {
+                if (el) el.indeterminate = mixedOf((e) => e.enabled);
+              }}
+              onChange={(e) => {
+                const enabled = e.target.checked;
+                updateCamerasAll({ enabled }, false);
+                updateLightsAll({ enabled }, false);
+                updateSubjectsAll({ enabled }, false);
+                for (const g of selectedEntities.filter((x) => x.kind === 'group')) {
+                  updateGroup(g.id, { enabled }, false);
+                }
+                commitHistory();
+              }}
+            />
+          </PropertyRow>
+        </div>
+
+        {/* 类型专属共享属性（仅同类型多选时显示） */}
+        {multiSelectKind === 'camera' && renderMultiSelectCamera()}
+        {multiSelectKind === 'light' && renderMultiSelectLight()}
+        {multiSelectKind === 'subject' && renderMultiSelectSubject()}
       </>
     );
   };
+
+  // 多选相机专属：FOV / Near / Far / 曝光
+  const renderMultiSelectCamera = () => (
+    <div className="border-b border-[var(--color-panel-border)]">
+      <CategoryHeader
+        title={t('optical')}
+        icon={IconCamera}
+        isOpen={folds.camera}
+        onToggle={() => toggleFold('camera')}
+      />
+      {folds.camera && (
+        <div className="flex flex-col gap-1.5 py-2">
+          <PropertyRow label={t('fov')}>
+            <NumberInput
+              mixed={mixedOf((e) => (e as CameraDef).fov)}
+              value={firstVal((e) => (e as CameraDef).fov)}
+              onCommitHistory={commitHistory}
+              onChange={(v, hist) => updateCamerasAll({ fov: v }, hist)}
+              min={1}
+              max={179}
+              suffix="°"
+              className="flex-1"
+            />
+          </PropertyRow>
+          <PropertyRow label={t('nearClip')}>
+            <NumberInput
+              mixed={mixedOf((e) => (e as CameraDef).near)}
+              value={firstVal((e) => (e as CameraDef).near)}
+              onCommitHistory={commitHistory}
+              onChange={(v, hist) => updateCamerasAll({ near: v }, hist)}
+              min={0.01}
+              suffix="m"
+              className="flex-1"
+            />
+          </PropertyRow>
+          <PropertyRow label={t('farClip')}>
+            <NumberInput
+              mixed={mixedOf((e) => (e as CameraDef).far)}
+              value={firstVal((e) => (e as CameraDef).far)}
+              onCommitHistory={commitHistory}
+              onChange={(v, hist) => updateCamerasAll({ far: v }, hist)}
+              min={0.1}
+              suffix="m"
+              className="flex-1"
+            />
+          </PropertyRow>
+          {/* 曝光（ISO/Shutter/Aperture） */}
+          <PropertyRow label={locale === 'zh' ? '感光度 (ISO)' : 'ISO'}>
+            <NumberInput
+              mixed={mixedOf((e) => (e as CameraDef).exposure.iso)}
+              value={firstVal((e) => (e as CameraDef).exposure.iso)}
+              onCommitHistory={commitHistory}
+              onChange={(v, hist) =>
+                updateCamerasAll(
+                  { exposure: { ...(selectedEntities[0] as CameraDef).exposure, iso: v } as CameraDef['exposure'] },
+                  hist,
+                )
+              }
+              min={50}
+              className="flex-1"
+            />
+          </PropertyRow>
+          <PropertyRow label={locale === 'zh' ? '光圈 (Aperture)' : 'Aperture'}>
+            <NumberInput
+              mixed={mixedOf((e) => (e as CameraDef).exposure.aperture)}
+              value={firstVal((e) => (e as CameraDef).exposure.aperture)}
+              onCommitHistory={commitHistory}
+              onChange={(v, hist) =>
+                updateCamerasAll(
+                  { exposure: { ...(selectedEntities[0] as CameraDef).exposure, aperture: v } as CameraDef['exposure'] },
+                  hist,
+                )
+              }
+              min={1}
+              className="flex-1"
+            />
+          </PropertyRow>
+        </div>
+      )}
+    </div>
+  );
+
+  // 多选灯光专属：强度 / 颜色
+  const renderMultiSelectLight = () => (
+    <div className="border-b border-[var(--color-panel-border)]">
+      <CategoryHeader
+        title={t('optical')}
+        icon={IconLight}
+        isOpen={folds.light}
+        onToggle={() => toggleFold('light')}
+      />
+      {folds.light && (
+        <div className="flex flex-col gap-1.5 py-2">
+          <PropertyRow label={locale === 'zh' ? '光照强度' : 'Intensity'}>
+            <NumberInput
+              mixed={mixedOf((e) => (e as LightDef).intensity)}
+              value={firstVal((e) => (e as LightDef).intensity)}
+              onCommitHistory={commitHistory}
+              onChange={(v, hist) => updateLightsAll({ intensity: v }, hist)}
+              min={0}
+              className="flex-1"
+            />
+          </PropertyRow>
+          <PropertyRow label={locale === 'zh' ? '颜色 (Color)' : 'Color'}>
+            <input
+              type="color"
+              value={'#' + firstVal((e) => (e as LightDef).color).toString(16).padStart(6, '0')}
+              onChange={(e) => updateLightsAll({ color: parseInt(e.target.value.slice(1), 16) }, false)}
+              onBlur={commitHistory}
+              className="h-[var(--control-h)] w-full rounded-sm border border-[var(--color-panel-border)] bg-[var(--color-recessed)] cursor-pointer"
+            />
+          </PropertyRow>
+        </div>
+      )}
+    </div>
+  );
+
+  // 多选主体专属：采样密度
+  const renderMultiSelectSubject = () => (
+    <div className="border-b border-[var(--color-panel-border)]">
+      <CategoryHeader
+        title={locale === 'zh' ? '采集' : 'Capture'}
+        icon={IconSubject}
+        isOpen={folds.subject}
+        onToggle={() => toggleFold('subject')}
+      />
+      {folds.subject && (
+        <div className="flex flex-col gap-1.5 py-2">
+          <PropertyRow label={locale === 'zh' ? '采样密度' : 'Sample Density'}>
+            <NumberInput
+              mixed={mixedOf((e) => (e as SubjectDef).sampleDensity)}
+              value={firstVal((e) => (e as SubjectDef).sampleDensity)}
+              onCommitHistory={commitHistory}
+              onChange={(v, hist) => updateSubjectsAll({ sampleDensity: v }, hist)}
+              min={1}
+              className="flex-1"
+            />
+          </PropertyRow>
+        </div>
+      )}
+    </div>
+  );
 
   // WDD -gemini 2026-06-19 增加获取可绑定的候选父级实体列表的过滤方法，防成环
   const getCandidateParents = (ent: AnyEntity): AnyEntity[] => {
@@ -305,7 +579,7 @@ export function Inspector() {
           <div className="flex flex-col gap-1.5 py-2">
             <PropertyRow label={locale === 'zh' ? '父级' : 'Parent'}>
               <select
-                className="flex-1 h-6 rounded-sm bg-[var(--color-recessed)] border border-[var(--color-panel-border)] text-[var(--color-text)] text-[var(--text-base)] px-1.5 focus:border-[var(--color-accent)] focus:outline-none"
+                className="flex-1 h-6 rounded-sm bg-[var(--color-recessed)] border border-[var(--color-panel-border)] text-[var(--color-text)] text-[11px] px-1.5 focus:border-[var(--color-accent)] focus:outline-none"
                 value={ent.parentId || ''}
                 onChange={(e) => {
                   const val = e.target.value;
@@ -405,14 +679,14 @@ export function Inspector() {
   // 2. 渲染主名称/标题行
   const renderIdentityRow = (ent: AnyEntity) => {
     return (
-      <div className="flex h-11 shrink-0 items-center justify-between border-b border-[var(--color-panel-border)] bg-[var(--color-panel-raised)] px-3">
+      <div className="flex h-11 shrink-0 items-center justify-between border-b border-[var(--color-panel-border)] bg-[var(--color-panel-raised)] px-3 min-w-0">
         <input
           type="text"
-          className="h-6 w-[70%] rounded-sm bg-[var(--color-recessed)] border border-[var(--color-panel-border)] px-1.5 text-[var(--text-base)] font-bold text-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none"
+          className="h-6 min-w-0 flex-1 rounded-sm bg-[var(--color-recessed)] border border-[var(--color-panel-border)] px-1.5 text-[11px] font-bold text-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none truncate"
           value={ent.name}
           onChange={(e) => renameEntity(ent.id, e.target.value)}
         />
-        <span className="text-[var(--text-label)] font-mono text-[var(--color-text-dim)] uppercase select-none opacity-75">
+        <span className="text-[var(--text-label)] font-mono text-[var(--color-text-dim)] uppercase select-none opacity-75 ml-2 shrink-0">
           {ent.kind}
         </span>
       </div>
@@ -635,7 +909,7 @@ export function Inspector() {
             <div className="flex flex-col gap-1 px-0 py-2">
               <PropertyRow label={t('lightKind')}>
                 <select
-                  className="flex-1 h-6 rounded-sm bg-[var(--color-recessed)] border border-[var(--color-panel-border)] px-1 text-[var(--text-base)] text-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none cursor-pointer"
+                  className="flex-1 h-6 rounded-sm bg-[var(--color-recessed)] border border-[var(--color-panel-border)] px-1 text-[11px] text-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none cursor-pointer"
                   value={light.lightKind}
                   onChange={(e) => updateLight(light.id, { lightKind: e.target.value as LightDef['lightKind'] })}
                 >
@@ -758,7 +1032,7 @@ export function Inspector() {
             <div className="flex flex-col gap-1 px-0 py-2">
               <PropertyRow label={t('geomType')}>
                 <select
-                  className="flex-1 h-6 rounded-sm bg-[var(--color-recessed)] border border-[var(--color-panel-border)] px-1 text-[var(--text-base)] text-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none cursor-pointer"
+                  className="flex-1 h-6 rounded-sm bg-[var(--color-recessed)] border border-[var(--color-panel-border)] px-1 text-[11px] text-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none cursor-pointer"
                   value={subj.geometry.type}
                   onChange={(e) => {
                     const type = e.target.value as SubjectDef['geometry']['type'];
@@ -880,17 +1154,36 @@ export function Inspector() {
                 const geom = subj.geometry;
                 if (geom.type !== 'mesh') return null;
                 return (
-                  <PropertyRow label={t('geomSrc')}>
-                    <input
-                      type="text"
-                      className="flex-1 h-6 rounded-sm bg-[var(--color-recessed)] border border-[var(--color-panel-border)] px-1.5 text-[var(--text-base)] text-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none"
-                      value={geom.src}
-                      onChange={(e) => {
-                        updateSubject(subj.id, { geometry: { type: 'mesh', src: e.target.value } });
-                      }}
-                      placeholder="assets/model.obj"
-                    />
-                  </PropertyRow>
+                  <>
+                    <PropertyRow label={t('geomSrc')}>
+                      <input
+                        type="text"
+                        className="flex-1 h-6 rounded-sm bg-[var(--color-recessed)] border border-[var(--color-panel-border)] px-1.5 text-[11px] text-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none"
+                        value={geom.src}
+                        onChange={(e) => {
+                          updateSubject(subj.id, { geometry: { type: 'mesh', src: e.target.value } });
+                        }}
+                        placeholder="assets/model.obj"
+                      />
+                    </PropertyRow>
+                    {/* #WDD-gpt 2026-06-21 - 动画 clip 下拉选择（仅 USDZ 有动画时显示） */}
+                    {geom.animate && (
+                      <PropertyRow label={locale === 'zh' ? '动画' : 'Animation'}>
+                        <select
+                          className="flex-1 h-6 rounded-sm bg-[var(--color-recessed)] border border-[var(--color-panel-border)] px-1 text-[11px] text-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none cursor-pointer"
+                          value={geom.animationClip ?? ''}
+                          onChange={(e) => {
+                            const clip = e.target.value === '' ? undefined : e.target.value;
+                            updateSubject(subj.id, { geometry: { ...geom, animationClip: clip } });
+                          }}
+                        >
+                          <option value="">{locale === 'zh' ? '默认 (首个)' : 'Default (First)'}</option>
+                          {/* 动画 clip 列表从模型加载后获取，这里用已知名称占位 */}
+                          <option value="idle">idle</option>
+                        </select>
+                      </PropertyRow>
+                    )}
+                  </>
                 );
               })()}
 
@@ -988,7 +1281,7 @@ export function Inspector() {
               <PropertyRow label={t('hdri')}>
                 <input
                   type="text"
-                  className="flex-1 h-6 rounded-sm bg-[var(--color-recessed)] border border-[var(--color-panel-border)] px-1.5 text-[var(--text-base)] text-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none"
+                  className="flex-1 h-6 rounded-sm bg-[var(--color-recessed)] border border-[var(--color-panel-border)] px-1.5 text-[11px] text-[var(--color-text)] focus:border-[var(--color-accent)] focus:outline-none"
                   value={env.hdri ?? ''}
                   onChange={(e) => updateEnv({ hdri: e.target.value || undefined })}
                   placeholder="None (Default Environment)"
@@ -1108,7 +1401,7 @@ export function Inspector() {
   };
 
   return (
-    <div className="flex h-full flex-col bg-[var(--color-panel)] text-[var(--color-text)] overflow-y-auto">
+    <div className="flex h-full flex-col bg-[var(--color-panel)] text-[var(--color-text)] overflow-y-auto overflow-x-hidden min-w-0">
       {isMultiSelect ? (
         renderMultiSelectGroup()
       ) : entity ? (

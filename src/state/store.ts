@@ -106,6 +106,8 @@ export interface EditorPreferences {
   gridSectionColor: string;
   /** 辅助圆环带半径（米）：地面原点处的参考圆环，标示默认拍摄半径。 */
   guideRingRadius: number;
+  /** 辅助圆环带宽度（米）：圆环带的管径/厚度。 */
+  guideRingTube: number;
   /** 视锥可视化长度（米）：相机视锥线框绘制的远端距离，独立于相机真实 far 裁剪面。
    *  真实 far 常为 1000（避免裁剪），直接画会得到超长锥体；此值限制视觉长度。 */
   frustumDrawDistance: number;
@@ -155,6 +157,9 @@ export interface PlannerState {
   // —— 数据 ——
   scene: SceneDef;
   selection: EntityId[];
+  // #WDD-gpt 2026-06-21 - Shift+click 范围选择的锚点：记录上次单击选中的实体 id，
+  // 下次 Shift+click 时从锚点到当前 id 之间的实体全部选中（按场景扁平顺序）。
+  lastSelectAnchor: EntityId | null;
   history: HistoryState;
   view: ViewState;
 
@@ -188,6 +193,12 @@ export interface PlannerState {
   clearSelection: () => void;
   /** 选中 id 及其全部子代（整组选择）。 */
   selectSubtree: (id: EntityId) => void;
+  /**
+   * Shift+click 范围选择：从上次单击锚点（lastSelectAnchor）到当前 id 之间的全部实体选中。
+   * 没有锚点时退化为单击选中。锚点随后更新为当前 id。
+   * #WDD-gpt 2026-06-21
+   */
+  selectRange: (id: EntityId) => void;
 
   // —— 更新（带历史）——
   updateCamera: (id: EntityId, patch: Partial<CameraDef>, withHistory?: boolean) => void;
@@ -428,7 +439,8 @@ function defaultPreferences(): EditorPreferences {
     gridSectionThickness: 0.5,
     gridCellColor: '#484d54',
     gridSectionColor: '#28a8ff',
-    guideRingRadius: 2,
+    guideRingRadius: 1,
+    guideRingTube: 0.1,
     // #WDD-gpt 2026-06-21 - 视锥绘制远端：默认 10m，避免用 cam.far(默认 1000) 画出超长锥
     frustumDrawDistance: 10,
   };
@@ -460,6 +472,7 @@ export const usePlanner = create<PlannerState>((set, get) => ({
   // T-022：首次启动加载环形相机阵列示例场景，方便直接演示与冒烟
   scene: buildExampleScene(),
   selection: [],
+  lastSelectAnchor: null,
   history: emptyHistory(),
   view: defaultView(),
   locale: 'zh',
@@ -797,20 +810,42 @@ export const usePlanner = create<PlannerState>((set, get) => ({
     }),
 
   // —— 选择 ——
+  // #WDD-gpt 2026-06-21 - select 记录锚点 lastSelectAnchor，供 Shift+click 范围选择使用。
   select: (id, additive = false) =>
     set((st) => {
-      if (id === null) return { selection: [] };
+      if (id === null) return { selection: [], lastSelectAnchor: null };
       if (additive) {
-        return st.selection.includes(id)
-          ? { selection: st.selection.filter((s) => s !== id) }
-          : { selection: [...st.selection, id] };
+        const has = st.selection.includes(id);
+        return {
+          selection: has ? st.selection.filter((s) => s !== id) : [...st.selection, id],
+          lastSelectAnchor: id,
+        };
       }
-      return { selection: [id] };
+      return { selection: [id], lastSelectAnchor: id };
     }),
   selectMany: (ids) => set({ selection: ids }),
   clearSelection: () => set({ selection: [] }),
   selectSubtree: (id) =>
     set((st) => ({ selection: collectSubtreeIds(st.scene, id) })),
+  // #WDD-gpt 2026-06-21 - Shift+click 范围选择：锚点到当前 id 之间的实体全部选中。
+  selectRange: (id) =>
+    set((st) => {
+      const flat = [
+        ...st.scene.cameras,
+        ...st.scene.lights,
+        ...st.scene.subjects,
+        ...(st.scene.groups ?? []),
+      ];
+      const ids = flat.map((e) => e.id);
+      const anchor = st.lastSelectAnchor;
+      if (!anchor || !ids.includes(anchor) || !ids.includes(id)) {
+        return { selection: [id], lastSelectAnchor: id };
+      }
+      const a = ids.indexOf(anchor);
+      const b = ids.indexOf(id);
+      const [lo, hi] = a < b ? [a, b] : [b, a];
+      return { selection: ids.slice(lo, hi + 1), lastSelectAnchor: anchor };
+    }),
 
   // —— 更新 ——
   updateCamera: (id, patch, withHistory = true) =>
